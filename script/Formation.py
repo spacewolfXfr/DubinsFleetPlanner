@@ -147,7 +147,7 @@ class Formation:
 
         Args:
             shift_center (bool, optional): If set, also shift the `center` by the barycenter, such that the poses are not moved
-                with respect to the global referential. Defaults to True.
+                with respect to the global referential. Defaults to False.
         """
         bary = self.barycenter()
         

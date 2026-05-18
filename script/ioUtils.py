@@ -16,8 +16,9 @@
 # along with DubinsFleetPlanner.  If not, see <https://www.gnu.org/licenses/>.
 
 import json,csv,dataclasses,pathlib,typing,copy
+import numpy as np
 
-from Dubins import Pose3D,ACStats,Path,BasicPath,FleetPlan,ListOfTimedPoses,TimedPosesLine,DictOfPoseTrajectories
+from Dubins import Pose3D,ACStats,Path,BasicPath,FleetPlan,ListOfTimedPoses,TimedPosesLine,DictOfPoseTrajectories,DubinsMove,mod2pi,central_angle
 
 
 ######################################## Dubins problem writing and parsing ########################################
@@ -34,6 +35,16 @@ class AC_PP_Problem:
     end:Pose3D      # End pose
     dt:float=0.     # Time difference with respect to the previous aircraft
     timeslots:list[float] = dataclasses.field(default_factory=list)
+    
+    def __post_init__(self):
+        if isinstance(self.start,np.ndarray):
+            self.start = Pose3D.from_array(self.start)
+        if isinstance(self.end,np.ndarray):
+            self.end = Pose3D.from_array(self.end)
+    
+    @staticmethod
+    def from_nparrays(stats:ACStats,start:np.ndarray,end:np.ndarray,dt:float=0.,timeslots:list[float]=[]):
+        return AC_PP_Problem(stats,Pose3D.from_array(start),Pose3D.from_array(end),dt,timeslots)
     
     @staticmethod
     def header(timeslot_num:int=0) -> typing.Sequence[str]:
@@ -66,6 +77,26 @@ class AC_PP_Problem:
         end     = Pose3D(end_x,end_y,end_z,end_theta)
         
         return AC_PP_Problem(stats,start,end,dt,timeslots)
+
+def straight_pp_problems(l:list[AC_PP_Problem],tol:float=1e-6) -> bool:
+    """ Returns True if all individual path planning problems can be solved by the same translation, False otherwise"""
+    # Check if a rotation is needed    
+    for p in l:
+        if abs(central_angle(p.start.theta - p.end.theta)) > tol:
+            return False
+        
+    # No rotation: compute a translation and check if it works for the others
+    pb0 = l[0]
+    tr_x = pb0.end.x - pb0.start.x
+    tr_y = pb0.end.y - pb0.start.y
+    
+    for p in l[1:]:
+        dest_x = p.start.x + tr_x
+        dest_y = p.start.y + tr_y
+        if (dest_x-p.end.x)**2 + (dest_y-p.end.y)**2 > tol*tol:
+            return False
+        
+    return True
 
 def write_pathplanning_problem_to_CSV(file,data:typing.Sequence[AC_PP_Problem],overwrite:bool=False):
     max_timeslots = max(len(d.timeslots) for d in data)
@@ -124,13 +155,41 @@ def parse_section_from_dict(d:dict) -> BasicPath:
         pass
     return BasicPath(**d)
 
-def parse_trajectory_from_dict(d:dict) -> tuple[ACStats,Path]:
+def straight_sections_compression(paths:list[BasicPath]) -> list[BasicPath]:
+    """ If two straight basic paths follow one another, merge them into one. Return a (deep)copy of the list after this transformation.
+    THIS DOES NOT CHECK IF THE FOLLOWING STRAIGHTS ARE ACTUALLY COLLINEAR.
+
+    Args:
+        paths (list[BasicPath])
+
+    Returns:
+        list[Path]
+    """
+    output = []
+    i = 0
+    n = len(paths)
+    while i < n:
+        output.append(copy.deepcopy(paths[i]))
+        j = i+1
+        if paths[i].type == DubinsMove.STRAIGHT:
+            while j < n and paths[j].type == DubinsMove.STRAIGHT:
+                j += 1
+            output[-1].length += sum(p.length for p in paths[i+1:j])
+            i = j
+        else:
+            i += 1
+    return output
+
+def parse_trajectory_from_dict(d:dict, straights_compression:bool=False) -> tuple[ACStats,Path]:
     stats_dict  = d["stats"]
     stats = ACStats(**stats_dict)
     
     path_dict   = d["path"]
     sections = [parse_section_from_dict(t) for t in path_dict["sections"]]
     
+    if straights_compression:
+        sections = straight_sections_compression(sections)
+
     path = Path(
         path_dict["total_length"],
         Pose3D(**path_dict["start"]),
@@ -140,11 +199,11 @@ def parse_trajectory_from_dict(d:dict) -> tuple[ACStats,Path]:
     
     return stats,path
 
-def parse_trajectories_from_JSON(file) -> FleetPlan:
+def parse_trajectories_from_JSON(file, straights_compression:bool=False) -> FleetPlan:
     with open(file) as jsonfile:
         raw_data = json.load(jsonfile)
         
-        paths = [parse_trajectory_from_dict(t) for t in raw_data["trajectories"]]
+        paths = [parse_trajectory_from_dict(t, straights_compression) for t in raw_data["trajectories"]]
         output = FleetPlan(
             raw_data["separation"],
             raw_data["z_alpha"],
