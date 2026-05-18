@@ -24,102 +24,11 @@ import csv
 import numpy as np
 from scipy.spatial.distance import pdist
 
+from ioUtils import AC_PP_Problem,write_pathplanning_problem_to_CSV
+
 from Dubins import Pose3D,ACStats
 
 from Formation import Formation
-
-######################################## Output CSV ########################################
-
-_CSV_problem_statement_header = "ac_id,start_x,start_y,start_z,start_theta,end_x,end_y,end_z,end_theta,airspeed,climb,turn_radius,dt".split(',')
-
-@dataclasses.dataclass
-class AC_PP_Problem:
-    """
-    Compact way to specify an individual problem (ie a line of a CSV specifying a path planning problem)
-    """
-    stats:ACStats   # Holds ac_id,airspeed,climb and turn_radius.
-    start:Pose3D    # Start pose
-    end:Pose3D      # End pose
-    dt:float=0.     # Time difference with respect to the previous aircraft
-    timeslots:list[float] = dataclasses.field(default_factory=list)
-    
-    @staticmethod
-    def header(timeslot_num:int=0) -> typing.Sequence[str]:
-        output:typing.Sequence[str] = copy.deepcopy(_CSV_problem_statement_header)
-        for i in range(timeslot_num):
-            output.append(f"Timeslot {i}") # type: ignore
-        return output
-    
-    @staticmethod
-    def parse_from_strlist(args:typing.Sequence[str]):
-        ac_id       = int(args[0])
-        start_x     = float(args[1])
-        start_y     = float(args[2])
-        start_z     = float(args[3])
-        start_theta = float(args[4])
-        end_x       = float(args[5])
-        end_y       = float(args[6])
-        end_z       = float(args[7])
-        end_theta   = float(args[8])
-        airspeed    = float(args[9])
-        climb       = float(args[10])
-        turn_radius = float(args[11])
-        dt          = float(args[12])
-        timeslots   = []
-        for e in args[13:]:
-            timeslots.append(float(e))
-        
-        stats   = ACStats(ac_id,airspeed,climb,turn_radius)
-        start   = Pose3D(start_x,start_y,start_z,start_theta)
-        end     = Pose3D(end_x,end_y,end_z,end_theta)
-        
-        return AC_PP_Problem(stats,start,end,dt,timeslots)
-
-def write_pathplanning_problem_to_CSV(file,data:typing.Sequence[AC_PP_Problem],overwrite:bool=False):
-    max_timeslots = max(len(d.timeslots) for d in data)
-    
-    with open(file, newline='', mode='w' if overwrite else 'x') as outcsv:
-        writer = csv.writer(outcsv,delimiter=';')
-        
-        writer.writerow(AC_PP_Problem.header(max_timeslots))
-        
-        for p in data:
-            
-            ac_id       = p.stats.id
-            start_x     = p.start.x
-            start_y     = p.start.y
-            start_z     = p.start.z
-            start_theta = p.start.theta
-            end_x       = p.end.x
-            end_y       = p.end.y
-            end_z       = p.end.z
-            end_theta   = p.end.theta
-            airspeed    = p.stats.airspeed
-            climb       = p.stats.climb
-            turn_radius = p.stats.turn_radius
-            dt          = p.dt
-            
-            filled_timeslots = [""] * max_timeslots
-            for i,v in enumerate(p.timeslots):
-                filled_timeslots[i] = str(v)
-            
-            writer.writerow([ac_id,start_x,start_y,start_z,start_theta,end_x,end_y,end_z,end_theta,airspeed,climb,turn_radius,dt]+filled_timeslots)
-
-
-def parse_pathplanning_problem_from_CSV(file:pathlib.Path) -> list[AC_PP_Problem]:
-    output = []
-    with open(file) as f:
-        reader = csv.reader(f,delimiter=';')
-        
-        header = next(reader)
-        for h,r in zip(header,_CSV_problem_statement_header):
-            assert h == r
-        
-        for l in reader:
-            output.append(AC_PP_Problem.parse_from_strlist(l))
-            
-    return output
-        
 
 ######################################## Case creator ########################################
 
