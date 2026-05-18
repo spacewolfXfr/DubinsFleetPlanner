@@ -17,6 +17,8 @@
 
 #include "Primitives.hpp"
 
+#include <tuple>
+
 
 /********************  Fundamental Dubins path computing  ********************/
 

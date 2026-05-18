@@ -126,7 +126,7 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
                     ,"Use extended Dubins curves with the given lengths, for the ends. If undefined while starts are, copy starts.")
 
     ("straights-only", po::bool_switch(&parsed_args.straight_only)->default_value(false)
-                    , "Allow only straight extensions. Applies only if 'extended' is used")
+                    , "Allow only straight extensions. Applies only if 'extend-' is used")
 
     ("allow-shortest", po::bool_switch(&parsed_args.allow_shortest)->default_value(false)
                     , "Only relevant for solving with timeslots. If true, allows adding the shortest paths (ignoring timeslots). Default to false.")
@@ -436,7 +436,7 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
         else
         {
             planner->solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,
-                args.separation,dt,
+                0,dt,
                 args.wind_x,args.wind_y,
                 args.reallocate,
                 args.max_iters,
