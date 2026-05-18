@@ -512,10 +512,25 @@ class Path:
                 output.append(self.sections[section_id].pose_at(time-prev_sections_time))
                 
         return output
-        
+    
     def sample(self,num:int) -> list[Pose3D]:
         assert num > 0
         return self.poses_at(np.linspace(0,self.duration(),num))
+    
+    def section_at(self,t:float) -> typing.Optional[BasicPath]:
+        section_id = 0
+        time = t
+        if time > self.duration():
+            return None
+        
+        while section_id < len(self.junctions) and t > self.junctions[section_id]:
+            time -= self.sections[section_id].duration()
+            section_id += 1
+        
+        if (section_id >= len(self.junctions)):
+            return self.sections[-1]
+        else:
+            return self.sections[section_id]
     
     def asdict(self) -> dict[str,typing.Any]:
         output = asdict(self)
