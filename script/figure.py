@@ -7,15 +7,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
+from matplotlib.legend_handler import HandlerTuple
 
 
-from Dubins import LRL,RLR,LSL,LSR,RSL,RSR,SLS,SRS,Pose2D,Pose3D,ACStats,Path,poses_XY_dist
+from Dubins import LRL,RLR,LSL,LSR,RSL,RSR,SLS,SRS, DubinsMove,Pose2D,Pose3D,ACStats,Path,poses_XY_dist
 from DubinsPathFitting import plan_LRL, plan_RLR, plan_LSL, plan_LSR, plan_RSL, plan_RSR, plan_SLS, plan_SRS,\
         plan_LRL_from_straights, plan_RLR_from_straights, plan_LSL_from_straights, plan_LSR_from_straights,\
-        plan_RSL_from_straights, plan_RSR_from_straights, plan_SLS_from_straights, plan_SRS_from_straights
+        plan_RSL_from_straights, plan_RSR_from_straights, plan_SLS_from_straights, plan_SRS_from_straights,\
+        fit_LRL_radius, fit_RLR_radius, fit_LSL_radius, fit_LSR_radius, fit_RSL_radius, fit_RSR_radius, fit_SLS_radius, fit_SRS_radius
 from plotting import plot_pose2d_sequence
 
-from _plotting_extra import my_cmap6,my_cmap
+from _plotting_extra import ColorType, my_cmap6,my_cmap
  
 
 def LRL_length(start:Pose2D, end:Pose2D) -> float:
@@ -349,7 +351,98 @@ def plot_length_functions(stats:ACStats, d:float, start:Pose2D, end:Pose2D, step
     ax.legend()
     fig.tight_layout()
     plt.show()
+
+def plot_separation_sections(p1:Path, p2:Path, stats1:ACStats, stats2:ACStats, axe:Axes, colors:list[ColorType],
+                             plot_distances:typing.Optional[typing.Literal['first','all','temporal','spatial']]=None):
+    ## Compute full paths for legend
+    dur1 = p1.total_length/stats1.airspeed
+    dur2 = p2.total_length/stats2.airspeed
+    dur = min(dur1,dur2)
+    times = np.linspace(0,dur,100)
+    pts1 = p1.poses_at(stats1.airspeed*times)
+    pts2 = p2.poses_at(stats2.airspeed*times)
+    _, l1s = plot_pose2d_sequence(axe,pts1,False,True,color='k',linestyle='solid',label='Path 1')
+    _, l2s = plot_pose2d_sequence(axe,pts2,False,True,color='k',linestyle='dashed',label='Path 2')
     
+    ## Compute sections
+    lenghts1 = [s.length for s in p1.sections]
+    lenghts2 = [s.length for s in p2.sections]
+    cumdurations1 = np.cumsum(lenghts1)/stats1.airspeed
+    cumdurations2 = np.cumsum(lenghts2)/stats2.airspeed
+    sections_durations = sorted(list(set(cumdurations1).union(set(cumdurations2),[0])))
+        
+    ## Plot sections
+    for i in range(1,len(sections_durations)):
+        if sections_durations[i-1] > dur:
+            break
+        if abs(sections_durations[i] - sections_durations[i-1]) < 1e-6:
+            continue
+        times = np.linspace(sections_durations[i-1],min(sections_durations[i],dur),500)
+        
+        pts1 = p1.poses_at(stats1.airspeed*times)
+        pts2 = p2.poses_at(stats2.airspeed*times)
+        
+        s1 = p1.section_at(stats1.airspeed*(sections_durations[i-1]+sections_durations[i])/2)
+        s2 = p2.section_at(stats2.airspeed*(sections_durations[i-1]+sections_durations[i])/2)
+        
+        assert s1 is not None and s2 is not None
+        
+        char1 = 'S' if s1.type == DubinsMove.STRAIGHT else 'C'
+        char2 = 'S' if s2.type == DubinsMove.STRAIGHT else 'C'
+        
+        plot_pose2d_sequence(axe,pts1,True,False,color=colors[i-1],linestyle='solid', label=f"Section {i}: {char1} -- {char2}")
+        plot_pose2d_sequence(axe,pts2,True,False,color=colors[i-1],linestyle='dashed')
+    
+        if plot_distances is not None and (plot_distances != 'first' or (plot_distances == 'first' and i == 1)):
+            ## Find minimum temporal distance between the two sections
+            if plot_distances == 'temporal' or plot_distances == 'all':
+                min_dist = np.inf
+                min_dist_loc = 0
+                
+                for k,(pt1,pt2) in enumerate(zip(pts1,pts2)):
+                    d = poses_XY_dist(pt1,pt2)
+                    if d < min_dist:
+                        min_dist = d
+                        min_dist_loc = k
+                        
+                
+            
+                axe.plot([pts1[min_dist_loc].x,pts2[min_dist_loc].x],
+                        [pts1[min_dist_loc].y,pts2[min_dist_loc].y],
+                        marker='D',
+                        color='k',
+                        linestyle=':',markeredgecolor='r',
+                        label=f"Temporal dist: {min_dist:.2f}")
+            
+            ## Find minimum spatial distance between the two sections
+            if plot_distances == 'spatial' or plot_distances == 'all':
+                min_dist = np.inf
+                min_dist_loc = (0,0)
+                for k1,pt1 in enumerate(pts1):
+                    for k2,pt2 in enumerate(pts2):
+                        d = poses_XY_dist(pt1,pt2)
+                        if d < min_dist:
+                            min_dist = d
+                            min_dist_loc = (k1,k2)
+                
+                axe.plot([pts1[min_dist_loc[0]].x,pts2[min_dist_loc[1]].x],
+                        [pts1[min_dist_loc[0]].y,pts2[min_dist_loc[1]].y],
+                        marker='X',
+                        color='k',
+                        linestyle=':',markeredgecolor='r',
+                        label=f"Spatial dist: {min_dist:.2f}")
+                        
+    
+    axe.legend()
+    axe.set_aspect('equal')
+    
+    ## Hide the initial full paths
+    for l in l1s:
+        l.set_visible(False)
+    for l in l2s:
+        l.set_visible(False)  
+    plt.show()
+
 def plot_pathplanning(stats:list[ACStats], starts:list[Pose2D], ends:list[Pose2D], target_length:float, separation:float):
     assert len(starts) == len(ends)
     
@@ -481,18 +574,39 @@ if __name__ == '__main__':
     
     ## Plotting paths
     
-    plot_fits(stats,start,end)
+    # plot_fits(stats,start,end)
     # plot_straights(stats, start, end, 10.)
     
     ## Demo path planning for two
     
-    # start_degrees2  = -40
-    # end_degrees2    = 20
-    
-    # start2  = Pose2D(1,1,np.deg2rad(start_degrees2))
-    # end2    = Pose2D(d,-2,np.deg2rad(end_degrees2))
-    # stats2  = ACStats(2,1.,0.,0.5)
+    end2  = Pose2D(d-1.5,1,np.deg2rad(30))
+    start2    = Pose2D(0.2,-2,np.deg2rad(-20))
+    stats2  = ACStats(2,1.,0.,0.5)
 
     # plot_pathplanning([stats,stats2],[start,start2],[end,end2],10.,0.5)
-            
+    
+    ## Demo separation sections
+    
+    p1_ref = plan_LSL(stats,start,end)
+    p2_ref = plan_LSL(stats2,start2,end2)
+    
+    assert p1_ref is not None and p2_ref is not None
+    
+    target_l = max(p1_ref.total_length,p2_ref.total_length)*1.5
+    
+    r1 = fit_LSL_radius(start,end,stats.turn_radius,10*stats.turn_radius,target_l)
+    r2 = fit_LSL_radius(start2,end2,stats2.turn_radius,10*stats2.turn_radius,target_l)
+    
+    assert r1 is not None and r2 is not None
+    
+    stats.turn_radius = r1
+    stats2.turn_radius = r2
+    
+    p1 = plan_LSL(stats,start,end)
+    p2 = plan_LSL(stats2,start2,end2)
+    
+    assert p1 is not None and p2 is not None
+    assert abs(p1.total_length - target_l) < 1e-3 and abs(p2.total_length - target_l) < 1e-3
+    
+    plot_separation_sections(p1,p2,stats,stats2,plt.subplots()[1],my_cmap6,'all')
     
