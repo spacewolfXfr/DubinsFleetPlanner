@@ -207,11 +207,6 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
     }
     
     // Implement default behaviors
-    if (parsed_args.start_length_extensions.size() > 0 && parsed_args.end_length_extensions.size() == 0)
-    {
-        parsed_args.end_length_extensions = parsed_args.start_length_extensions;
-    }
-
     if (parsed_args.line_fit && parsed_args.ratios.size() == 0)
     {
         parsed_args.ratios = {0,0.5,1.};
