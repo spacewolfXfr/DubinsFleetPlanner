@@ -17,7 +17,10 @@
 
 
 #include "BaseDubins.hpp"
-#include "FleetPlanner.hpp"
+
+#include "AbstractFleetPlanner.hpp"
+#include "FleetPlanners/all.hpp"
+
 #include "ioUtils.hpp"
 
 #include "randomPathShape.hpp"

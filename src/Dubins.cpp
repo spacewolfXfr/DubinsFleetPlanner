@@ -590,3 +590,23 @@ bool Dubins::is_XY_separated_from(const Dubins& other, double this_speed, double
 
     return true;
 }
+
+
+Dubins join_paths(const Dubins &first, const Dubins &second, double precision_tol)
+{
+    if (!first.is_valid() || !second.is_valid())
+    {
+        throw std::runtime_error("Cannot join invalid Dubins paths");
+    }
+
+    if (pose_dist(first.get_end(), second.get_start()) > precision_tol || std::abs(first.get_end().theta - second.get_start().theta) > precision_tol)
+    {
+        throw std::runtime_error("Cannot join Dubins paths: end of first path does not match start of second path");
+    }
+
+    auto joined_sections = first.get_all_sections();
+    joined_sections.insert(joined_sections.end(), second.get_all_sections().begin(), second.get_all_sections().end());
+
+    Dubins joined(first.get_start(), second.get_end(), joined_sections);
+    return joined;
+}

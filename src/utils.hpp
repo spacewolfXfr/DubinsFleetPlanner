@@ -347,3 +347,14 @@ inline std::tuple<uint,uint,double> min_poses_dist_XY(const std::array<Pose3D,N>
 {
     return min_poses_dist(pose_dist_XY,poses);
 }
+
+// ---------- Poses span ---------- //
+
+
+/**
+ * @brief Returns min_x,max_x,min_y,max_y,min_z,max_z of the given poses
+ * 
+ * @param poses 
+ * @return std::tuple<float,float,float,float,float,float> 
+ */
+std::tuple<float,float,float,float,float,float> poses_span(const std::vector<Pose3D>& poses);

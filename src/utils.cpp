@@ -163,3 +163,27 @@ double pose_dist_XY(const Pose3D& p1, const Pose3D& p2)
     double dy = p1.y - p2.y;
     return std::sqrt(dx*dx+dy*dy);
 }
+
+std::tuple<float,float,float,float,float,float> poses_span(const std::vector<Pose3D>& poses)
+{
+    float min_x = INFINITY;
+    float max_x = -INFINITY;
+    float min_y = INFINITY;
+    float max_y = -INFINITY;
+    float min_z = INFINITY;
+    float max_z = -INFINITY;
+
+    for(const Pose3D& p : poses)
+    {
+        if (p.x < min_x) { min_x = p.x; }
+        if (p.x > max_x) { max_x = p.x; }
+
+        if (p.y < min_y) { min_y = p.y; }
+        if (p.y > max_y) { max_y = p.y; }
+
+        if (p.z < min_z) { min_z = p.z; }
+        if (p.z > max_z) { max_z = p.z; }
+    }
+
+    return {min_x,max_x,min_y,max_y,min_z,max_z};
+}

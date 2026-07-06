@@ -637,3 +637,5 @@ public:
      */
     typedef std::vector<std::unique_ptr<Dubins>> (*FittedPathGeneratorFunction)(double, double, const Pose3D &, const Pose3D &, double, double);
 };
+
+Dubins join_paths(const Dubins &first, const Dubins &second, double precision_tol = DubinsFleetPlanner_PRECISION);

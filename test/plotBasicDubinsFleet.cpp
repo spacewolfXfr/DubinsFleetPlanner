@@ -19,7 +19,8 @@
 #include "BaseDubins.hpp"
 #include "plotDubins.hpp"
 
-#include "FleetPlanner.hpp"
+#include "AbstractFleetPlanner.hpp"
+#include "FleetPlanners/all.hpp"
 
 #include "ioUtils.hpp"
 #include "ExtendedDubins.hpp"

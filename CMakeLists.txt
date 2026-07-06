@@ -76,7 +76,7 @@ option(DubinsFleetPlanner_TESTING "Enable testing for path planning (will downlo
 add_subdirectory(src)
 
 
-# option(DubinsFleetPlanner_COVERAGE "Perform coverage analysis while running tests" ON)
+option(DubinsFleetPlanner_COVERAGE "Perform coverage analysis while running tests" OFF)
 
 # -------------------- Testing -------------------- #
 

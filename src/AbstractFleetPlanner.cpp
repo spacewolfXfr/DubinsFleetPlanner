@@ -15,7 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with DubinsFleetPlanner.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "FleetPlanner.hpp"
+#include "AbstractFleetPlanner.hpp"
+
+// ---------- Helpful for solving ---------- //
 
 double maxmin_dubins_traveltime(
     const std::vector<Pose3D>& starts, const std::vector<Pose3D>& ends,
@@ -165,3 +167,100 @@ std::vector<std::unique_ptr<Dubins>> AbstractFleetPlanner::generate_shortest_pat
     {
         return list_possible_baseDubins(stats.climb,stats.turn_radius,start,end,wind_x,wind_y);
     }
+
+
+// ---------- Smart sampling ---------- //
+
+void print_samples(const std::list<SampleCase>& l)
+{
+    for(const SampleCase& c : l)
+    {
+        std::cout << c.val << " ; ";
+    }
+    std::cout << std::endl;
+}
+
+std::list<SampleCase> generate_linspace(double start, double end, uint samples, bool include_start, bool include_end)
+{
+    assert(end > start);
+    std::list<SampleCase> output;
+
+    double delta = end-start;
+
+    if (include_start && include_end)
+    {
+        assert(samples >= 2);
+
+        double step = delta/(samples-1);
+        for(uint i = 0; i < samples; i++)
+        {
+            output.push_back(SampleCase{start+i*step});
+        }
+        return output;
+    }
+    else if (include_start && !include_end)
+    {
+        assert(samples >= 1);
+
+        double step = delta/(samples);
+        for(uint i = 0; i < samples; i++)
+        {
+            output.push_back(SampleCase{start+i*step});
+        }
+        return output;
+    }
+    else if (!include_start && include_end)
+    {
+        assert(samples >= 1);
+
+        double step = delta/(samples);
+        for(uint i = 1; i <= samples; i++)
+        {
+            output.push_back(SampleCase{start+i*step});
+        }
+        return output;
+    }
+    else // (!include_start && !include_end)
+    {
+        double step = delta/(samples+1);
+        for(uint i = 1; i <= samples; i++)
+        {
+            output.push_back(SampleCase{start+i*step});
+        }
+        return output;
+    }
+}
+
+bool weave_samples(std::list<SampleCase>& l, uint weave, double min_weave_delta)
+{
+    assert(l.size() > 1);
+    // print_samples(l);
+
+    auto next = l.begin(); next++;
+    auto iter = l.begin();
+    bool output = false;
+
+    while(next != l.end())
+    {
+        if (next->val - iter->val >= min_weave_delta)
+        {
+            std::set<uint> intersect;
+            std::set_intersection(
+                iter->NoPathsACs.begin(),iter->NoPathsACs.end(),
+                next->NoPathsACs.begin(),next->NoPathsACs.end(),
+                std::inserter(intersect,intersect.begin())
+            );
+
+            if (intersect.size() == 0)
+            {
+                auto new_values = generate_linspace(iter->val,next->val,weave,false,false);
+                l.splice(next,new_values);
+                output = true;
+            }
+        }
+        iter = next;
+        next++;
+    }
+
+    return output;
+}

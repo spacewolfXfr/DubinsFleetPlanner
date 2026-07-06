@@ -36,7 +36,7 @@ set(DubinsFleetPlannerLib_SRC
     Dubins.cpp
     ExtendedDubins.cpp
     Fitting.cpp
-    FleetPlanner.cpp
+    AbstractFleetPlanner.cpp
     ioUtils.cpp
     Primitives.cpp
     utils.cpp)

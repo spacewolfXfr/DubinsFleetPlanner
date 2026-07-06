@@ -77,15 +77,15 @@ option(DubinsFleetPlanner_VISUALISATION "Include visualisation in the solver (fo
 
 ########## Coverage ##########
 
-# # if (DubinsFleetPlanner_COVERAGE) # Check if the build type is 'Coverage'
-#   find_package(Python3 REQUIRED COMPONENTS Interpreter)  # Required for gcovr
-#   add_custom_target(coverage
-#     COMMAND ${CMAKE_COMMAND} -E make_directory coverage
-#     COMMAND ${Python3_EXECUTABLE} -m gcovr -r ${CMAKE_SOURCE_DIR} --html --html-nested -o coverage/index.html
-#     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-#     COMMENT "Generating HTML coverage report..."
-#   )
-# # endif()
+if (DubinsFleetPlanner_COVERAGE) # Check if the build type is 'Coverage'
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)  # Required for gcovr
+  add_custom_target(coverage
+    COMMAND ${CMAKE_COMMAND} -E make_directory coverage
+    COMMAND ${Python3_EXECUTABLE} -m gcovr -r ${CMAKE_SOURCE_DIR} --html --html-nested -o coverage/index.html
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Generating HTML coverage report..."
+  )
+endif()
 
 ########## Procedural tests ##########
 
