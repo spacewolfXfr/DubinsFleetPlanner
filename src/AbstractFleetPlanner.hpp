@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <algorithm>
 #include <vector>
 #include <tuple>
 #include <list>
@@ -25,8 +24,6 @@
 
 #include <iostream>
 #include <memory>
-#include <optional>
-#include <format>
 
 #include <boost/chrono.hpp>
 
@@ -67,44 +64,16 @@ public:
     double final_path_time = 0;
     double worst_improvement_rate = 0;
 
-    std::string format() const
-    {
-        return std::format(
-            "Case: {}\n -> {}\n  Found path of duration {} (baseline is {})"
-            "\n Performed {} iterations in {:.4f} ms\n Used {} threads; {} possible paths per AC; {} Worst rate measured (time unit per second of computation)",
-            case_name, 
-            (success) ? ((false_positive) ? "FALSE POSITIVE!" : "Success!") : "FAILURE",
-            final_path_time,
-            initial_path_time,
-            iterations,
-            static_cast<double>(duration.count())/1000000.,
-            threads,
-            possible_paths_num,
-            worst_improvement_rate);
-    }
-
+    // Stdout-friendly formatting of the results
+    std::string format() const;
 
     static const std::string CSV_header()
     {
         return "Test input;Success;False positive;Iterations;Duration(ns);Threads;Possible paths;Initial guessed time;Final obtained time;Worst rate(u/s)";
     }
 
-
-    std::string as_CSV() const
-    {
-        return std::format("{};{};{};{};{};{};{};{};{};{}",
-            case_name,
-            success,
-            false_positive,
-            iterations,
-            duration.count(),
-            threads,
-            possible_paths_num,
-            initial_path_time,
-            final_path_time,
-            worst_improvement_rate
-        );
-    }
+    // CSV row format
+    std::string as_CSV() const;
 };
 
 // ---------- Helpful for solving ---------- //
@@ -243,6 +212,12 @@ protected:
     double precision_tol;               // Precision when looking for collisions
     double maximal_relative_duration;   // Maximum distance (as a multiplicative factor from the lowest possible distance)
     mutable bool first_log = true;      // When logging, state whether it is the first log or not
+
+public:
+    virtual std::string my_name() const
+    {
+        return "AbstractFleetPlanner";
+    }
 
     /*******************************************************************************/
     /*                                                                             */

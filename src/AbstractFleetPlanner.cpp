@@ -17,6 +17,51 @@
 
 #include "AbstractFleetPlanner.hpp"
 
+#include <algorithm>
+#include <format>
+
+/*************************************************************************************/
+/*************************************************************************************/
+
+/**                                     Helpers                                     **/
+
+/*************************************************************************************/
+/*************************************************************************************/
+
+// ---------- ExtraPPResults implementation ---------- //
+
+std::string ExtraPPResults::format() const
+{
+    return std::format(
+        "Case: {}\n -> {}\n  Found path of duration {} (baseline is {})"
+        "\n Performed {} iterations in {:.4f} ms\n Used {} threads; {} possible paths per AC; {} Worst rate measured (time unit per second of computation)",
+        case_name, 
+        (success) ? ((false_positive) ? "FALSE POSITIVE!" : "Success!") : "FAILURE",
+        final_path_time,
+        initial_path_time,
+        iterations,
+        static_cast<double>(duration.count())/1000000.,
+        threads,
+        possible_paths_num,
+        worst_improvement_rate);
+}
+
+std::string ExtraPPResults::as_CSV() const
+{
+    return std::format("{};{};{};{};{};{};{};{};{};{}",
+        case_name,
+        success,
+        false_positive,
+        iterations,
+        duration.count(),
+        threads,
+        possible_paths_num,
+        initial_path_time,
+        final_path_time,
+        worst_improvement_rate
+    );
+}
+
 // ---------- Helpful for solving ---------- //
 
 double maxmin_dubins_traveltime(

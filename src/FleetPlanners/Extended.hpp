@@ -104,6 +104,11 @@ public:
         const std::vector<double>& _slens, const std::vector<double>& _elens, int verb, std::ostream& output_stream)
         : AbstractFleetPlanner(_prec,_max_r_dur,verb, output_stream), start_lengths(_slens), end_lengths(_elens) {}
 
+    std::string my_name() const override
+    {
+        return "ExtendedDubinsFleetPlanner";
+    }
+
 };
 
 
@@ -185,6 +190,10 @@ public:
         const std::vector<double>& _slens, const std::vector<double>& _elens, int verb, std::ostream& output_stream)
         : AbstractFleetPlanner(_prec,_max_r_dur,verb, output_stream), start_lengths(_slens), end_lengths(_elens) {}
 
+    std::string my_name() const override
+    {
+        return "StraightExtendedDubinsFleetPlanner";
+    }
 };
 
 
@@ -262,6 +271,11 @@ public:
         const std::vector<double>& _slens, const std::vector<double>& _elens, int verb, std::ostream& output_stream)
         : AbstractFleetPlanner(_prec,_max_r_dur,verb, output_stream), start_lengths(_slens), end_lengths(_elens) {}
 
+
+    std::string my_name() const override
+    {
+        return "BaseExtendedDubinsFleetPlanner";
+    }
 };
 
 
@@ -298,4 +312,8 @@ public:
         int verb, std::ostream& output_stream)
         : AbstractFleetPlanner(_prec,_max_r_dur,verb, output_stream),ratios(rs){}
 
+    std::string my_name() const override
+    {
+        return "LineExtendedDubinsFleetPlanner";
+    }
 };

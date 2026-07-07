@@ -28,4 +28,9 @@ public:
 
     BasicDubinsFleetPlanner(double _prec, double _max_r_dur, int verb, std::ostream& output_stream) :
         AbstractFleetPlanner(_prec,_max_r_dur,verb, output_stream) {}
+
+    std::string my_name() const override
+    {
+        return "BasicDubinsFleetPlanner";
+    }
 };

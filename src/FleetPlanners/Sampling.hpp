@@ -89,4 +89,8 @@ public:
         rng.seed(seed);
     }
 
+    std::string my_name() const override
+    {
+        return "SamplingDubinsFleetPlanner";
+    }
 };

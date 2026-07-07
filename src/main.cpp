@@ -343,7 +343,7 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     output_log << "[";
     
-    if (args.start_length_extensions.size())
+    if (args.start_length_extensions.size() || args.end_length_extensions.size())
     {
         if (args.line_fit)
         {
