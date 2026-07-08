@@ -77,6 +77,8 @@ struct program_arguments
     int max_iters,weave_iters;
     double min_weave_dist,min_weave_dist_percent;
     int samples;
+    double ellipse_ratio;
+    bool ellipse_border_only;
     int export_samples;
     int verbosity;
     double precision;
@@ -138,8 +140,12 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
     ("line-ratios"  , po::value<vector<double>>(&parsed_args.ratios)->multitoken()
                     , "If 'line' is activated, specifies the ratios (between 0 and 1) to use for extra straights generation. If undefined, default to 0, 0.5 and 1")
 
-    ("samples,S"   , po::value<int>(&parsed_args.samples)->default_value(0)
+    ("samples,S"    , po::value<int>(&parsed_args.samples)->default_value(0)
                     ,"Number of samples used by the sampling planner. Default to 0 (i.e. don't use sampling).")
+    ("ellipse,e"    , po::value<double>(&parsed_args.ellipse_ratio)->default_value(NAN)
+                    ,"Use an ellipse and specifies of its radius should be as a ratio of target length. Default to NaN (i.e. don't use an ellipse).")
+    ("ellipse-border-only", po::bool_switch(&parsed_args.ellipse_border_only)->default_value(false)
+                    ,"If true, only samples on the border of the ellipse are used. Default to false.")
 
     ("threads,t"    , po::value<int>(&parsed_args.thread_num)->default_value(-1)
                     ,"Number of threads to use (if 0, the program chooses automatically). Disabled multi-threading by default.")
@@ -167,7 +173,7 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
     
     ("verbose,v"    , po::value<int>(&parsed_args.verbosity)->default_value(1)
                     , "Set verbosity, from 0 (silent), to 3 (very very verbose). Default to 1.")
-    ("export-samples"    , po::value<int>(&parsed_args.export_samples)->default_value(1000)
+    ("export-samples,E"    , po::value<int>(&parsed_args.export_samples)->default_value(1000)
                     ,"Number of samples for display and/or exporting to CSV. Default to 1000.")
     ("help", "Produce help message")
     ;
@@ -393,27 +399,38 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     if (args.samples > 0)
     {
-        double min_x,max_x,min_y,max_y,min_z,max_z;
-        std::tie(min_x,max_x,min_y,max_y,min_z,max_z) = poses_span(starts);
+        if (!std::isnan(args.ellipse_ratio))
+        {
+            planner = std::make_unique<EllipseSamplingDubinsFleetPlanner>(
+                args.precision, args.max_r_length,
+                std::move(planner), args.samples, args.ellipse_ratio, args.ellipse_border_only,
+                args.verbosity, output_log
+            );
+        }
+        else
+        {
+            double min_x,max_x,min_y,max_y,min_z,max_z;
+            std::tie(min_x,max_x,min_y,max_y,min_z,max_z) = poses_span(starts);
 
-        double min_x2,max_x2,min_y2,max_y2,min_z2,max_z2;
-        std::tie(min_x2,max_x2,min_y2,max_y2,min_z2,max_z2) = poses_span(ends);
+            double min_x2,max_x2,min_y2,max_y2,min_z2,max_z2;
+            std::tie(min_x2,max_x2,min_y2,max_y2,min_z2,max_z2) = poses_span(ends);
 
-        min_x = std::min(min_x,min_x2);
-        max_x = std::max(max_x,max_x2);
-        min_y = std::min(min_y,min_y2);
-        max_y = std::max(max_y,max_y2); 
-        min_z = std::min(min_z,min_z2);
-        max_z = std::max(max_z,max_z2);
+            min_x = std::min(min_x,min_x2);
+            max_x = std::max(max_x,max_x2);
+            min_y = std::min(min_y,min_y2);
+            max_y = std::max(max_y,max_y2); 
+            min_z = std::min(min_z,min_z2);
+            max_z = std::max(max_z,max_z2);
 
-        Pose3D min_pt(min_x,min_y,min_z,0);
-        Pose3D max_pt(max_x,max_y,max_z,0);
+            Pose3D min_pt(min_x,min_y,min_z,0);
+            Pose3D max_pt(max_x,max_y,max_z,0);
 
-        planner = std::make_unique<SamplingDubinsFleetPlanner>(
-            args.precision, args.max_r_length,
-            std::move(planner), args.samples, min_pt, max_pt,
-            args.verbosity, output_log
-        );
+            planner = std::make_unique<SamplingDubinsFleetPlanner>(
+                args.precision, args.max_r_length,
+                std::move(planner), args.samples, min_pt, max_pt,
+                args.verbosity, output_log
+            );
+        }
     }
 
     auto start = chrono::thread_clock::now(boost::throws());

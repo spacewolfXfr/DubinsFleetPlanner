@@ -115,6 +115,7 @@ class FlightEndpoints:
     start_time:pd.Timestamp
     end:LatlonPose
     end_time:pd.Timestamp
+    initial_end_time:pd.Timestamp
     dest_ICAO:str
     dest_runway:str
     stats:ACStats   # Speed is expected in NM / minute, turn radius in NM
@@ -141,6 +142,7 @@ class FlightEndpoints:
             self.start_time+duration,
             self.end,
             self.end_time,
+            self.initial_end_time,
             self.dest_ICAO,
             self.dest_runway,
             self.stats
@@ -236,12 +238,14 @@ def extract_flight_endpoints(flight:Flight,candidate_airports:typing.Iterable[st
         first_dpt["timestamp"],
         flight_datapoint_to_pose(last_dpt),
         last_dpt["timestamp"],
+        last_dpt["timestamp"],
         airport,last_dpt["ILS"],
         stats
     ), FlightEndpoints(
         flight_datapoint_to_pose(first_dpt),
         first_dpt["timestamp"],
         LatlonPose(rw_proj[0],rw_proj[1],last_dpt["altitude"],rw_proj[2]),
+        last_dpt["timestamp"],
         last_dpt["timestamp"],
         airport,last_dpt["ILS"],
         stats

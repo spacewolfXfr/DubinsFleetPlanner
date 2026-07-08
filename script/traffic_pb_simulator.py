@@ -57,11 +57,19 @@ def solve_problem(solver:pathlib.Path,src_dir:pathlib.Path,dest_dir:pathlib.Path
     
     cmd.append('-l')
     
-    # cmd.append('-v')
-    # cmd.append('2')
+    cmd.append('--samples')
+    cmd.append('3')
+    
+    cmd.append('--ellipse')
+    cmd.append('0.4')
+    
+    cmd.append('--ellipse-border-only')
+    
+    cmd.append('-v')
+    cmd.append('2')
     
     cmd.append('--straights-only')
-    cmd.append('--allow-shortest')
+    # cmd.append('--allow-shortest')
     
     if obstacle_path is not None:
         cmd.append('-O')
@@ -384,9 +392,7 @@ class ArrivalsSimulator:
             obstacles_exist = False
             if self.scheduled is not None:
                 print(f"Plan time: {self.scheduled.duration}")
-                
                 noncandidate_acs = set(self.scheduled._traj_dict.keys()) - candidate_acs
-                
                 
                 
                 if len(noncandidate_acs) > 0:
@@ -437,16 +443,17 @@ class ArrivalsSimulator:
                 for s,p in self.scheduled.trajectories:
                     i = self.__task_index[s.id]
                     dduration = (pd.Timedelta(minutes=p.duration()) - (self.tasklist[i].end_time - new_t)).total_seconds()/60
-                    if abs(dduration) > 0.1:
-                        print(f"Change in arrival for {s.id}: {abs(dduration):.1f} min {'earlier' if dduration < 0 else 'later'}")
                     self.tasklist[i].end_time = pd.Timedelta(minutes=p.duration()) + new_t
+                    dinit_duration = (self.tasklist[i].end_time - self.tasklist[i].initial_end_time).total_seconds()/60
+                    if abs(dduration) > 0.1:
+                        print(f"Change in arrival for {s.id}: {abs(dinit_duration):.1f} min {'earlier' if dduration < 0 else 'later'}")
                     
                     if self.__axes is not None:
                         poses = [p.pose_at(t) for t in np.linspace(0,p.duration(),50,endpoint=True)]
                         
                             
                         c = self.__color_dict[s.id]
-                        _,l = plot_pose2d_sequence(self.__axes,poses,False,False,alpha=0.2,color=c,linestyle=':')
+                        _,l,_,_ = plot_pose2d_sequence(self.__axes,poses,False,False,alpha=0.2,color=c,linestyle=':')
                         try:
                             self.__traj_dict[s.id].set_visible(False)
                             del self.__traj_dict[s.id]
@@ -473,33 +480,62 @@ class ArrivalsSimulator:
                  ac_num_threshold:int,
                  final_time:pd.Timedelta,
                  threads:int) -> list[tuple[pd.Timestamp,list[tuple[ACStats,Pose3D]]]]:
-        log = []
+        # log = []
         
         while self.__t < self.__end_of_times:
-            
-            do_schedule = False
-            if (self.__t - self.__last_global_schedule) >= time_threshold:
-                do_schedule = True
-            
-            if not(do_schedule):
-                unscheduled = 0
-                for task in self.tasklist:
-                    if task.start_time <= self.__t and task.end_time > self.__t:
-                        if self.scheduled is None:
-                            unscheduled += 1
-                        else:
-                            if task.stats.id not in self.scheduled._traj_dict.keys():
-                                unscheduled += 1
+            try:
+                do_schedule = False
+                if (self.__t - self.__last_global_schedule) >= time_threshold:
+                    do_schedule = True
                 
-                do_schedule = unscheduled >= ac_num_threshold
+                if not(do_schedule):
+                    unscheduled = 0
+                    for task in self.tasklist:
+                        if task.start_time <= self.__t and task.end_time > self.__t:
+                            if self.scheduled is None:
+                                unscheduled += 1
+                            else:
+                                if task.stats.id not in self.scheduled._traj_dict.keys():
+                                    unscheduled += 1
+                    
+                    do_schedule = unscheduled >= ac_num_threshold
+                
+                
+                poss = self.step(timestep,reschedule_threshold,final_time,do_schedule,threads)
+                # log.append((self.__t,poss))
+                # if self.__encountered_exception is not None:
+                    # break
+            except KeyboardInterrupt:
+                print("Simulation interrupted by user.")
+                break
             
-            
-            poss = self.step(timestep,reschedule_threshold,final_time,do_schedule,threads)
-            log.append((self.__t,poss))
-            # if self.__encountered_exception is not None:
-                # break
-            
-        return log
+        plt.ioff()
+        self.report()
+        
+    def report(self):
+        dts = []
+        for task in self.tasklist:
+            # Consider only tasks ended
+            if task.end_time < self.__t:
+                dts.append((task.end_time - task.initial_end_time).total_seconds()/60)
+        
+        hist,edges = np.histogram(dts)
+        mean = np.mean(dts)
+        median = np.median(dts)
+        std = np.std(dts)
+        
+        fig,ax = plt.subplots(1,1)
+        ax.bar(edges[:-1], hist, width=np.diff(edges), align='edge')
+        ax.set_xlabel('Delay (minutes)')
+        ax.set_ylabel('Frequency')
+        ax.set_title('Distribution of Flight Delays ({} flights)'.format(len(dts)))
+        ax.vlines(mean, ymin=0, ymax=max(hist), colors='k', linestyles='dashed', label='Mean: {:.2f} min'.format(mean))
+        ax.vlines(median, ymin=0, ymax=max(hist), colors='k', linestyles='solid', label='Median: {:.2f} min'.format(median))
+        ax.vlines([mean + std, mean - std], ymin=0, ymax=max(hist), colors='g', linestyles='dotted', label='Mean $\\pm$ 1 Std Dev: {:.2f} min'.format(std))
+        ax.legend()
+        
+        fig.show()
+        
 
 
 #################### Entrypoint ####################
@@ -537,9 +573,9 @@ def iter_flightdata_by_day(input_file: pathlib.Path, time_column:str='timestamp'
     for key in start_groups.groups.keys():
         starting = start_groups.get_group(key)
         ending = end_groups.get_group(key)
-        interval = starting.merge(ending, on='flight_id', how='outer', suffixes=('_start', '_end')).drop(columns=['flight_id_col_start', 'flight_id_col_end'])
+        interval = starting.merge(ending, on=id_column, how='outer', suffixes=('_start', '_end')).drop(columns=['flight_id_col_start', 'flight_id_col_end'])
         
-        yield Traffic(pd.read_parquet(input_file,filters=[('flight_id', 'in', interval.index)]))
+        yield Traffic(pd.read_parquet(input_file,filters=[(id_column, 'in', interval.index)]))
     
     
 
@@ -604,18 +640,18 @@ def main():
     if args.data is None:
         traffic_iter = [filter_traffic(samples.quickstart,["LFPO","LFPG","LFPB"])]
     else:
-        traffic_iter = iter_flightdata_by_day(args.data)
+        traffic_iter = iter_flightdata_by_day(args.data,id_column='flight_id')
         if traffic_iter is None:
             print("ERROR: Importing traffic failed. Exiting")
             exit(1)
     
-    import matplotlib.pyplot as plt
-    plt.ion()
-    fig,ax = plt.subplots(figsize=(16/1.5,9/1.5))
-    ax.set_aspect('equal')
-    fig.tight_layout()
     
     for traffic in traffic_iter:
+        plt.ion()
+        fig,ax = plt.subplots(figsize=(16/1.5,9/1.5))
+        ax.set_aspect('equal')
+        fig.tight_layout()
+        
         endpoints:list[FlightEndpoints] = []
         expected_speed = args.speed # kts
         threshold_shift = args.threshold_shift # NM
@@ -662,9 +698,10 @@ def main():
             pd.Timedelta(f"{args.final_time} minute"),
             args.threads
         )
-    
-    
-    
+        
+        cont = input("Enter 'y' to restart simulation with the next day data, quit otherwise: ")
+        if cont != 'y':
+            break
     
 if __name__ == '__main__':
     main()

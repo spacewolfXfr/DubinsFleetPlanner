@@ -111,7 +111,6 @@ public:
 
 };
 
-
 /**
  * @brief Plannification based on any previous paths generator extended by straights only (S) of fixed lengths
  * 

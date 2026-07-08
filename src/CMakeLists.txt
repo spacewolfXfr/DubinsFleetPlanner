@@ -34,6 +34,7 @@ set(DubinsFleetPlannerLib_SRC
     ConflictDetection.cpp
     ConflictList.cpp
     Dubins.cpp
+    Ellipse.cpp
     ExtendedDubins.cpp
     Fitting.cpp
     AbstractFleetPlanner.cpp
