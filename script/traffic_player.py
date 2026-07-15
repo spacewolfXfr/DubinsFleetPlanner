@@ -386,29 +386,21 @@ class TrafficReplay:
 #################### Entry point ####################
 
 
-def main():
+def main(data_file:str, speed:float, filter:bool=True):
     global ICAO_set
     
     ICAO_set = set(["LFPO","LFPG","LFPB"])
     # traffic = Traffic.from_file("")
-    try:
-        traffic = Traffic.from_file('testdata.parquet')
-        filtered = True
-    except FileNotFoundError:
-        traffic = samples.quickstart
-        filtered = False
-        
-    if traffic is None:
-        traffic = samples.quickstart
-        filtered = False
     
-    if not(filtered):
+    print("Loading dataset...")
+    traffic = Traffic.from_file(data_file)
+    
+    if filter:
         print("Filtering dataset...")
         flight_to_remove = set()
         for flight in traffic:
             if get_arrival_airport(flight) == "UNKNOWN":
                 flight_to_remove.add(flight.icao24)
-
         df = traffic.data
         traffic = Traffic(df[~df.icao24.isin(flight_to_remove)]).compute_xy().filter(filters.FilterAboveSigmaMedian()).eval(8)
         if traffic is None:
@@ -416,7 +408,7 @@ def main():
             exit(1)
             
         traffic = traffic.assign_id().eval(8)
-        traffic.to_parquet('testdata.parquet')
+        # traffic.to_parquet('testdata.parquet')
     
     if traffic is None:
         print("isded")
@@ -447,7 +439,25 @@ def main():
     traffic = traffic.resample(100).eval(8)
     
     trafficRP = TrafficReplay(traffic,100,100,fig=fig,ax=ax,ax_alt=ax_alt)
-    trafficRP.replay(60)
+    trafficRP.replay(speed)
     
-if __name__ == __name__:
-    main()
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Replay aircraft trajectories in real time.")
+    parser.add_argument("file", type=str, help="Path to the Parquet file containing the traffic data.")
+    parser.add_argument("--speed", type=float, default=60.0, help="Replay speed factor (default: 60.0, meaning 1 minute of simulation time per second of wall clock time).")
+    parser.add_argument('--ICAOs',nargs='+',
+                    help="List of ICAO codes for airports in which to look for landings in the given dataset. Default to LFPO,LFPG,LFPB",
+                    default=["LFPO","LFPG","LFPB"])
+    
+    args = parser.parse_args()
+    
+    icao_set = set(args.ICAOs)
+    file = args.file 
+    speed = args.speed
+    
+    main(file,speed,True)
+    
+    
+    
