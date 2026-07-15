@@ -17,6 +17,8 @@ from DubinsPathFitting import plan_LRL, plan_RLR, plan_LSL, plan_LSR, plan_RSL, 
         fit_LRL_radius, fit_RLR_radius, fit_LSL_radius, fit_LSR_radius, fit_RSL_radius, fit_RSR_radius, fit_SLS_radius, fit_SRS_radius
 from plotting import plot_pose2d_sequence
 
+from PathInterpolator import interpolate_path,unit_interpolate_basicpath
+
 from _plotting_extra import ColorType, my_cmap6,my_cmap
  
 
@@ -608,5 +610,48 @@ if __name__ == '__main__':
     assert p1 is not None and p2 is not None
     assert abs(p1.total_length - target_l) < 1e-3 and abs(p2.total_length - target_l) < 1e-3
     
-    plot_separation_sections(p1,p2,stats,stats2,plt.subplots()[1],my_cmap6,'all')
+    # plot_separation_sections(p1,p2,stats,stats2,plt.subplots()[1],my_cmap6,'all')
+    
+    ## Demo full path interpolation
+    
+    # p1_interp = interpolate_path(stats,p1)
+    # p2_interp = interpolate_path(stats2,p2)
+    
+    # fig,ax = plt.subplots()
+    
+    # samples1 = np.linspace(0,p1.total_length,100)
+    
+    # plot_pose2d_sequence(ax,p1.poses_at(samples1),False,True,color='blue',linestyle='dashed',label='Original path 1')
+    # interp_pts1 = p1_interp(samples1)
+    # ax.plot(interp_pts1[:,0],interp_pts1[:,1],color='blue',linestyle='solid',label='Interpolated path 1')
+    
+    # ax.set_aspect('equal')
+    # ax.legend()
+    # plt.show()
+    
+    ## Demo path section interpolation
+    
+    ref_poses = []
+    interp_poses = []
+    
+    for s in p1.sections:
+        samples = np.linspace(0,s.length,100)
+        interp = unit_interpolate_basicpath(s,0.5)
+        
+        for l in samples:
+            ref_poses.append(s.pose_at(l))
+            interp_poses.append(interp(l))
+            
+    fig,ax = plt.subplots()
+    
+    interp_poses = np.asarray(interp_poses)
+    print(interp_poses)
+    
+    plot_pose2d_sequence(ax,ref_poses,False,True,color='blue',linestyle='dashed',label='Original path 1')
+    ax.plot(interp_poses[:,0],interp_poses[:,1],color='blue',linestyle='solid',label='Interpolated path 1')
+    
+    ax.set_aspect('equal')
+    ax.legend()
+    plt.show()
+    
     
