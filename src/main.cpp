@@ -29,8 +29,8 @@
 
 #include "ProjectHeader.h"
 #include "ioUtils.hpp"
-#include "AbstractFleetPlanner.hpp"
-#include "FleetPlanners/all.hpp"
+#include "FleetPlanner.hpp"
+#include "PathGenerators/all.hpp"
 #include "ConflictList.hpp"
 
 /******************** Util functions ********************/
@@ -85,10 +85,11 @@ struct program_arguments
     double max_r_length;
     bool line_fit;
     vector<double> ratios;
+    bool fixed_radius;
     bool straight_only;
     int max_solver_time;
     bool recompute;
-    string obstacle_pathname;
+    string obstacle_pathname,geometric_obstacle_pathname;
 };
 
 
@@ -123,6 +124,8 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
 
     ("obstacles,O"  , po::value<string>(&parsed_args.obstacle_pathname)->default_value("")
                     , "Path to a JSON file describing multiple paths to be considered as obstacles")
+    ("geo-obstacles,G"  , po::value<string>(&parsed_args.geometric_obstacle_pathname)->default_value("")
+                    , "Path to a JSON file describing multiple paths to be considered as geometric obstacles, i.e. time-independant barriers.")
     
     ("extend-start ", po::value<vector<double>>(&parsed_args.start_length_extensions)->multitoken()
                     ,"Use extended Dubins curves with the given lengths, for the starts")
@@ -139,6 +142,8 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
                     , "Add paths with minimal turn radius and fitted extra straights at start and end")
     ("line-ratios"  , po::value<vector<double>>(&parsed_args.ratios)->multitoken()
                     , "If 'line' is activated, specifies the ratios (between 0 and 1) to use for extra straights generation. If undefined, default to 0, 0.5 and 1")
+    ("fixed-radius" , po::bool_switch(&parsed_args.fixed_radius)->default_value(false)
+                    , "If both this and 'line' are set, only use the minimal turn radius for Dubins paths. Otherwise, allow any radius (i.e. fitted). Default to false.")
 
     ("samples,S"    , po::value<int>(&parsed_args.samples)->default_value(0)
                     ,"Number of samples used by the sampling planner. Default to 0 (i.e. don't use sampling).")
@@ -276,6 +281,8 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     std::vector<Dubins> obstacle_paths = {};
     std::vector<AircraftStats> obstacle_stats = {};
+    std::vector<Dubins> geometric_obstacle_paths = {};
+    std::vector<AircraftStats> geometric_obstacle_stats = {};
     double __wind_x,__wind_y,__min_sep,__z_alpha;
 
     if (!args.obstacle_pathname.empty())
@@ -285,6 +292,12 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
             __min_sep,__wind_x,__wind_y,__z_alpha);
     }
     
+    if (!args.geometric_obstacle_pathname.empty())
+    {
+        std::ifstream geo_obstacle_src(args.geometric_obstacle_pathname);
+        DubinsPP::InputParser::parse_paths_as_ModernJSON(geo_obstacle_src,geometric_obstacle_paths,geometric_obstacle_stats,
+            __min_sep,__wind_x,__wind_y,__z_alpha);
+    }
 
     // ----- Parsing case data ----- //
 
@@ -341,97 +354,59 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     
     // ----- Start optimization ----- //
     
-    std::unique_ptr<AbstractFleetPlanner> planner;
     bool good_solution = true;
 
     string output_log_pathname = output_path.string() + ".log.json";
     std::ofstream output_log(output_log_pathname);
 
-    output_log << "[";
-    
-    if (args.start_length_extensions.size() || args.end_length_extensions.size())
+    std::unique_ptr<PathsGenerator> shortest_path_gen = std::make_unique<BasePathsGenerator>(args.precision);
+    std::unique_ptr<FittedPathsGenerator> path_gen;
+
+    if (args.line_fit)
     {
-        if (args.line_fit)
-        {
-            if (args.straight_only)
-            {
-                planner = std::make_unique<StraightExtendedDubinsFleetPlanner<generate_both_straight_and_radius_fitted_fixed_ratios,4*8>>(
-                    args.precision, args.max_r_length,args.start_length_extensions,args.end_length_extensions,
-                    args.verbosity, output_log
-                    );
-                
-            }
-            else
-            {
-                planner = std::make_unique<LineExtendedDubinsFleetPlanner>(
-                    args.precision, args.max_r_length,args.ratios,
-                    args.verbosity, output_log
-                    );
-            }
-        }
-        else
-        {
-            planner = std::make_unique<BaseExtendedDubinsFleetPlanner>(
-                    args.precision, args.max_r_length,
-                    args.start_length_extensions, args.end_length_extensions,
-                    args.verbosity, output_log);
-        }
-        
+        path_gen = std::make_unique<FittedStraightBaseDubins>(args.ratios,args.precision);
     }
     else
     {
-        if (args.line_fit)
-        {
-            std::vector<double> default_ratios = {0.,0.5,1.};
+        auto fitted_line_extensions = std::make_unique<FittedStraightBaseDubins>(args.ratios,args.precision);
+        auto fitted_radius          = std::make_unique<BaseFittedPathsGenerator>(args.precision);
 
-            planner = std::make_unique<LineExtendedDubinsFleetPlanner>(
-                args.precision, args.max_r_length,default_ratios,
-                args.verbosity, output_log
-            );
-        }
-        else
-        {
-            planner = std::make_unique<BasicDubinsFleetPlanner>(
-                args.precision ,args.max_r_length,
-                args.verbosity, output_log);
-        }
+        std::vector<std::unique_ptr<FittedPathsGenerator>> tmp;
+        tmp.emplace_back(std::move(fitted_line_extensions));
+        tmp.emplace_back(std::move(fitted_radius));
+
+        AggregatedFittedPathsGenerator tmp_gen(std::move(tmp));
+
+        path_gen = std::make_unique<AggregatedFittedPathsGenerator>(std::move(tmp_gen));
     }
 
     if (args.samples > 0)
     {
         if (!std::isnan(args.ellipse_ratio))
         {
-            planner = std::make_unique<EllipseSamplingDubinsFleetPlanner>(
-                args.precision, args.max_r_length,
-                std::move(planner), args.samples, args.ellipse_ratio, args.ellipse_border_only,
-                args.verbosity, output_log
-            );
+            path_gen = std::make_unique<FittedEllipseSampling>(std::move(path_gen),args.ellipse_ratio,args.samples);
         }
         else
         {
-            double min_x,max_x,min_y,max_y,min_z,max_z;
-            std::tie(min_x,max_x,min_y,max_y,min_z,max_z) = poses_span(starts);
-
-            double min_x2,max_x2,min_y2,max_y2,min_z2,max_z2;
-            std::tie(min_x2,max_x2,min_y2,max_y2,min_z2,max_z2) = poses_span(ends);
-
-            min_x = std::min(min_x,min_x2);
-            max_x = std::max(max_x,max_x2);
-            min_y = std::min(min_y,min_y2);
-            max_y = std::max(max_y,max_y2); 
-            min_z = std::min(min_z,min_z2);
-            max_z = std::max(max_z,max_z2);
-
-            Pose3D min_pt(min_x,min_y,min_z,0);
-            Pose3D max_pt(max_x,max_y,max_z,0);
-
-            planner = std::make_unique<SamplingDubinsFleetPlanner>(
-                args.precision, args.max_r_length,
-                std::move(planner), args.samples, min_pt, max_pt,
-                args.verbosity, output_log
-            );
+            path_gen = std::make_unique<FittedRandomEllipseSampling>(std::move(path_gen),1.,args.samples,0);
         }
     }
+
+    if (args.start_length_extensions.size() || args.end_length_extensions.size())
+    {
+        if (args.straight_only)
+        {
+            path_gen = std::make_unique<StraightExtendedFittedPathsGenerator>(std::move(path_gen),args.start_length_extensions,args.end_length_extensions);
+            shortest_path_gen = std::make_unique<StraightExtendedPathsGenerator>(std::move(shortest_path_gen),args.start_length_extensions,args.end_length_extensions);
+        }
+        else
+        {
+            path_gen = std::make_unique<AllExtendedFittedPathsGenerator>(std::move(path_gen),args.start_length_extensions,args.end_length_extensions);
+            shortest_path_gen = std::make_unique<AllExtendedPathsGenerator>(std::move(shortest_path_gen),args.start_length_extensions,args.end_length_extensions);
+        }
+    }
+
+    std::unique_ptr<FleetPlanner> planner = std::make_unique<FleetPlanner>(*shortest_path_gen,*path_gen,args.precision,args.max_r_length);
 
     auto start = chrono::thread_clock::now(boost::throws());
     
@@ -440,9 +415,9 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     if (!empty_timeslots)
     {
         planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,extra,starts,ends,stats,args.separation,timeslots,
-            args.wind_x,args.wind_y,args.thread_num,
-            obstacle_paths,obstacle_stats,
-            args.allow_shortest);
+            args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
+            obstacle_paths,obstacle_stats,geometric_obstacle_paths,geometric_obstacle_stats
+            );
     }
     else
     {
@@ -454,7 +429,8 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
             args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
             args.thread_num,
             args.max_solver_time,
-            obstacle_paths,obstacle_stats);
+            obstacle_paths,obstacle_stats,
+            geometric_obstacle_paths,geometric_obstacle_stats);
     }
 
     extra.duration = chrono::thread_clock::now(boost::throws()) - start;
@@ -470,9 +446,9 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
         if (!empty_timeslots)
         {
             planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,0,timeslots,
-                args.wind_x,args.wind_y,args.thread_num,
-                obstacle_paths,obstacle_stats,
-                args.allow_shortest);
+                args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
+                obstacle_paths,obstacle_stats,geometric_obstacle_paths,geometric_obstacle_stats
+                );
         }
         else
         {
@@ -484,7 +460,8 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
                 args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
                 args.thread_num,
                 args.max_solver_time,
-                obstacle_paths,obstacle_stats);
+                obstacle_paths,obstacle_stats,
+                geometric_obstacle_paths,geometric_obstacle_stats);
         }
     }
         

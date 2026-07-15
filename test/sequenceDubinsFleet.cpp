@@ -18,8 +18,8 @@
 
 #include "BaseDubins.hpp"
 
-#include "AbstractFleetPlanner.hpp"
-#include "FleetPlanners/all.hpp"
+#include "FleetPlanner.hpp"
+#include "PathGenerators/all.hpp"
 
 #include "ioUtils.hpp"
 
@@ -90,7 +90,15 @@ int main()
     std::fill(delta_t.begin(),delta_t.end(),0.);
 
     // -------------------- Test solver -------------------- //
-    auto solver = BasicDubinsFleetPlanner(1e-3,5.);
+
+    BasePathsGenerator short_gen =  BasePathsGenerator(1e-3);
+    BaseFittedPathsGenerator gen =  BaseFittedPathsGenerator(1e-3);
+
+    auto solver = FleetPlanner(
+        short_gen,
+        gen,
+        1e-3,5.
+    );
 
     for(uint i = 0; i < list_of_checkpoints.size(); i++)
     {

@@ -27,10 +27,7 @@
 
 #include <boost/chrono.hpp>
 
-#include "Dubins.hpp"
-#include "BaseDubins.hpp"
-#include "ExtendedDubins.hpp"
-
+#include "PathGenerator.hpp"
 #include "ConflictList.hpp"
 #include "ioUtils.hpp"
 
@@ -199,7 +196,7 @@ std::list<SampleCase> generate_linspace(double start, double end, uint samples, 
  */
 bool weave_samples(std::list<SampleCase>& l, uint weave, double min_weave_delta);
 
-class AbstractFleetPlanner 
+class FleetPlanner 
 {
 protected:
 
@@ -212,11 +209,17 @@ protected:
     double precision_tol;               // Precision when looking for collisions
     double maximal_relative_duration;   // Maximum distance (as a multiplicative factor from the lowest possible distance)
     mutable bool first_log = true;      // When logging, state whether it is the first log or not
+    FittedPathsGenerator& path_gen;
+    PathsGenerator& shortest_path_gen;
 
 public:
-    virtual std::string my_name() const
+    FleetPlanner(PathsGenerator &_shortest_path_gen, FittedPathsGenerator &_path_gen, double _prec, double _max_r_dur, int verb = DubinsFleetPlanner_VERBOSE, std::ostream& output_stream = std::cout) : 
+        shortest_path_gen(_shortest_path_gen), path_gen(_path_gen),
+        precision_tol(_prec), maximal_relative_duration(_max_r_dur), verbosity(verb), datalog(output_stream) {}
+
+    std::string my_name() const
     {
-        return "AbstractFleetPlanner";
+        return path_gen.my_name();
     }
 
     /*******************************************************************************/
@@ -227,7 +230,7 @@ public:
 
 public:
     /**
-     * @brief Virtual function generating possible paths given a situation
+     * @brief Function generating possible paths given a situation, relying on provided path generator
      * 
      * @param start     Starting pose
      * @param end       Ending pose 
@@ -235,15 +238,21 @@ public:
      * @param target_len    Length of the paths to generate
      * @return std::vector<std::unique_ptr<Dubins>> List of possible paths with the given length
      */
-    virtual std::vector<std::unique_ptr<Dubins>> generate_possible_paths(
-        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const = 0;
+    std::vector<std::unique_ptr<Dubins>> generate_possible_paths(
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const
+    {
+        return path_gen.generate_paths(start,end,stats.climb,stats.turn_radius,target_len);
+    }
 
     /**
      * @brief Maximum number of different paths returned by `generate_possible_paths` 
      * 
      * @return uint 
      */
-    virtual uint max_path_num() const = 0; 
+    uint max_path_num() const
+    {
+        return path_gen.max_path_num();
+    } 
 
     /**
      * @brief Generate the list of shortest paths. It is a list as it considers the shortest path *for each type of path*
@@ -255,8 +264,11 @@ public:
      * @param wind_y    Wind, Y component (TODO: integrate properly)
      * @return std::vector<std::unique_ptr<Dubins>> 
      */
-    virtual std::vector<std::unique_ptr<Dubins>> generate_shortest_paths(
-        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double wind_x, double wind_y) const;
+    std::vector<std::unique_ptr<Dubins>> generate_shortest_paths(
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double wind_x, double wind_y) const
+    {
+        return shortest_path_gen.generate_paths(start,end,stats.climb,stats.turn_radius);
+    }
 
 
     /**********************************************************************************/
@@ -640,15 +652,6 @@ public:
     int verbosity;
     std::ostream& datalog;
 
-    AbstractFleetPlanner(double _prec, double _max_r_dur, int verb, std::ostream& output_stream) : 
-        precision_tol(_prec), maximal_relative_duration(_max_r_dur), verbosity(verb), datalog(output_stream) {}
-
-    AbstractFleetPlanner(double _prec, double _max_r_dur, int verb) :
-        precision_tol(_prec), maximal_relative_duration(_max_r_dur), verbosity(verb), datalog(std::cout) {}
-
-    AbstractFleetPlanner(double _prec, double _max_r_dur) :
-        precision_tol(_prec), maximal_relative_duration(_max_r_dur), verbosity(DubinsFleetPlanner_VERBOSE), datalog(std::cout) {}
-
     /**
      * @brief  Solve the pathfinding problem for given target times
      * 
@@ -813,7 +816,8 @@ public:
         double min_weave_delta =1., double min_weave_frac =0.0001,
         int threads = -1,
         int max_time_s = 60,
-        const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {}
+        const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
+        const std::vector<Dubins>& geo_obstacle_paths = {}, const std::vector<AircraftStats>& geo_obstacle_stats = {}
     ) const
     {
         // Timing
@@ -1048,8 +1052,9 @@ public:
         const std::vector<std::vector<double>>& timeslots,
         double wind_x = 0., double wind_y = 0.,
         int threads = -1,
+        bool add_shortest = false,
         const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
-        bool add_shortest = false
+        const std::vector<Dubins>& geo_obstacle_paths = {}, const std::vector<AircraftStats>& geo_obstacle_stats = {}
     ) const
     {
         // Timing

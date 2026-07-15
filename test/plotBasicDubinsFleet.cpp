@@ -19,8 +19,8 @@
 #include "BaseDubins.hpp"
 #include "plotDubins.hpp"
 
-#include "AbstractFleetPlanner.hpp"
-#include "FleetPlanners/all.hpp"
+#include "FleetPlanner.hpp"
+#include "PathGenerators/all.hpp"
 
 #include "ioUtils.hpp"
 #include "ExtendedDubins.hpp"
@@ -161,8 +161,13 @@ int main()
 
     // -------------------- Test solver -------------------- //
 
+    BasePathsGenerator          shortest_gen = BasePathsGenerator(TEST_PRECISION);
+    BaseFittedPathsGenerator    base_gen     = BaseFittedPathsGenerator(TEST_PRECISION);
 
-    BasicDubinsFleetPlanner basic_planner(TEST_PRECISION,TEST_MAX_R_LENGTH);
+    const auto& basic_planner = FleetPlanner(
+        shortest_gen,base_gen,
+        TEST_PRECISION,TEST_MAX_R_LENGTH
+    );
 
     std::vector<double> extensions_lengths{
         0.,
@@ -173,21 +178,15 @@ int main()
         // TEST_AIRPORT_SPEED*5.
     };
 
-    LineExtendedDubinsFleetPlanner extended_planner(TEST_PRECISION,TEST_MAX_R_LENGTH,{0,0.5,1.},DubinsFleetPlanner_VERY_VERBOSE);
 
     ExtraPPResults extra;
     std::vector<Dubins> results;
 
     basic_planner.solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(results,extra,starts_vec,ends_vec,stats_vec,min_sep,delta_t_vec,wind_x,wind_y);
     
-    // auto opt_result = extended_planner.solve<Dubins::are_XY_separated>(extra,starts_vec,ends_vec,stats_vec,min_sep,delta_t_vec,wind_x,wind_y);
-    // auto opt_result = extended_planner.solve_parallel<Dubins::are_XY_separated>(extra,starts_vec,ends_vec,stats_vec,min_sep,delta_t_vec,wind_x,wind_y);
-
     if (results.size() != stats_vec.size())
     {
         std::cout << std::endl << "| ***** !! No solution found !! ***** |" << std::endl;
-        // opt_result = extended_planner.solve_parallel<Dubins::are_XY_separated>(starts_vec,ends_vec,stats_vec,0.,delta_t_vec,wind_x,wind_y);
-        // test_name = std::string("COLLIDING_") + test_name;
 
         exit(1);
     }

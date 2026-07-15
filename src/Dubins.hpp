@@ -51,46 +51,7 @@ protected:
     /**
      * @brief Recompute the different values deduced from the problem if the start, end or control ever change
      */
-    void recompute()
-    {
-        compute_length();
-        junctions_locs.clear();
-        junctions.clear();
-
-        double curr_len = 0;
-        Pose3D p = start;
-
-        uint N = sections.size();
-
-        for (uint i = 0; i < N - 1; i++)
-        {
-            const DynamicPathShape &s = sections[i];
-
-            assert(abs(s.p3) < DubinsFleetPlanner_ZERO_TOLERANCE);
-            assert(abs(p.z) < DubinsFleetPlanner_ZERO_TOLERANCE);
-
-            curr_len += s.length;
-            junctions_locs.push_back(curr_len);
-            if (s.m == STRAIGHT)
-            {
-                p = follow_dubins<STRAIGHT>(p, s.length, 1., s.p3 / s.planar_speed(), s.p1);
-            }
-            else if (s.m == LEFT)
-            {
-                p = follow_dubins<LEFT>(p, s.length, 1., s.p3 / s.planar_speed(), s.p1);
-            }
-            else if (s.m == RIGHT)
-            {
-                p = follow_dubins<RIGHT>(p, s.length, 1., s.p3 / s.planar_speed(), s.p1);
-            }
-            else
-            {
-                throw std::runtime_error("Unknown DubinsMove");
-            }
-
-            junctions.push_back(p);
-        }
-    }
+    void recompute();
 
     /**
      * @brief Compute and return the path length.
@@ -140,7 +101,7 @@ public:
         return length;
     }
 
-    /****** Constructors ******/
+    /************************ Constructors ************************/
 
     Dubins() : start(UndefPose),end(UndefPose),sections({}),length(NAN) {}
 
@@ -157,7 +118,7 @@ public:
 #endif
     }
 
-    /****** Getters ******/
+    /************************ Getters ************************/
 
     Pose3D get_start() const { return start; }
     Pose3D get_end() const { return end; }
@@ -253,45 +214,7 @@ public:
      * @param len Length parameter
      * @return Pose3D
      */
-    Pose3D get_position(double len) const
-    {
-        uint i = 0;
-        uint N = sections.size();
-
-        while (i < N - 1 && len > junctions_locs[i])
-        {
-            i++;
-        }
-
-        Pose3D p;
-        if (i == 0)
-        {
-            p = start;
-        }
-        else
-        {
-            p = junctions[i - 1];
-            len -= junctions_locs[i - 1];
-        }
-
-        DynamicPathShape s = sections[i];
-        if (s.m == STRAIGHT)
-        {
-            return follow_dubins<STRAIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else if (s.m == LEFT)
-        {
-            return follow_dubins<LEFT>(p, len, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else if (s.m == RIGHT)
-        {
-            return follow_dubins<RIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else
-        {
-            throw std::runtime_error("Unknown DubinsMove");
-        }
-    }
+    Pose3D get_position(double len) const;
 
     /**
      * @brief Get the position at the given time, assuming constant speed along the path.
@@ -317,59 +240,7 @@ public:
      * @param sorted If True, assume lengths are sorted (speed up computations)
      * @return const std::vector<Pose3D>
      */
-    const std::vector<Pose3D> get_positions(std::vector<double> &lens, bool sorted = false) const
-    {
-        std::vector<Pose3D> output;
-        if (!sorted)
-        {
-            for (const double &l : lens)
-            {
-                output.push_back(get_position(l));
-            }
-        }
-        else
-        {
-            uint i = 0;
-            uint N = sections.size();
-            for (double len : lens)
-            {
-                while (i < N - 1 && len > junctions_locs[i])
-                {
-                    i++;
-                }
-
-                Pose3D p;
-                if (i == 0)
-                {
-                    p = start;
-                }
-                else
-                {
-                    p = junctions[i - 1];
-                    len -= junctions_locs[i - 1];
-                }
-
-                DynamicPathShape s = sections[i];
-                if (s.m == STRAIGHT)
-                {
-                    output.push_back(follow_dubins<STRAIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1));
-                }
-                else if (s.m == LEFT)
-                {
-                    output.push_back(follow_dubins<LEFT>(p, len, 1., s.p3 / s.planar_speed(), s.p1));
-                }
-                else if (s.m == RIGHT)
-                {
-                    output.push_back(follow_dubins<RIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1));
-                }
-                else
-                {
-                    throw std::runtime_error("Unknown DubinsMove");
-                }
-            }
-        }
-        return output;
-    }
+    const std::vector<Pose3D> get_positions(std::vector<double> &lens, bool sorted = false) const;
 
     /**
      * @brief Get positions at several times, assuming a given constant speed
@@ -494,6 +365,8 @@ public:
         return get_pathshape(len).m;
     }
 
+    /************************ Seperation functions ************************/
+
     /**
      * @brief Compute the first point such that 'this' and 'that' breach their minimal separation,
      * or the minimal distance between the two proving that they are separated
@@ -608,6 +481,19 @@ public:
 
         return true;
     }
+
+    /**
+     * @brief Check wether two Dubins paths intersect *as drawings* (i.e. neglecting dynamics)
+     * 
+     * @param first     First path
+     * @param second    Second path
+     * @param min_dist  Minimal separation
+     * @param tol       Solver tolerance
+     * @return true     Paths are not separated (so they intersect)
+     * @return false    Paths are separated (they do not intersect)
+     */
+    static bool are_XY_geometric_intersecting(const Dubins &first, const Dubins &second,
+                                        double min_dist, double tol);
 
     /**
      * @brief Generic type for separation function

@@ -29,6 +29,7 @@ endif()
 configure_file(ProjectHeader.h.in ProjectHeader.h)
 
 set(DubinsFleetPlannerLib_SRC
+    FleetPlanner.cpp
     Aircraft.cpp
     BaseDubins.cpp
     ConflictDetection.cpp
@@ -37,8 +38,9 @@ set(DubinsFleetPlannerLib_SRC
     Ellipse.cpp
     ExtendedDubins.cpp
     Fitting.cpp
-    AbstractFleetPlanner.cpp
     ioUtils.cpp
+    PathGenerators/Extended.cpp
+    PathGenerators/Sampling.cpp
     Primitives.cpp
     utils.cpp)
 

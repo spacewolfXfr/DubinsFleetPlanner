@@ -15,10 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with DubinsFleetPlanner.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "AbstractFleetPlanner.hpp"
+#include "FleetPlanner.hpp"
 
 #include <algorithm>
 #include <format>
+
+#include "BaseDubins.hpp"
 
 /*************************************************************************************/
 /*************************************************************************************/
@@ -206,13 +208,6 @@ std::set<uint> acs_without_paths(const ListOfPossibilities& all_paths)
     
     return output;
 }
-
-std::vector<std::unique_ptr<Dubins>> AbstractFleetPlanner::generate_shortest_paths(
-        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double wind_x, double wind_y) const
-    {
-        return list_possible_baseDubins(stats.climb,stats.turn_radius,start,end,wind_x,wind_y);
-    }
-
 
 // ---------- Smart sampling ---------- //
 

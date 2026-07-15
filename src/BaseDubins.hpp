@@ -76,9 +76,10 @@ std::vector<DynamicPathShape> set_length_SLS(const Pose3D& start, const Pose3D& 
  * @param _end          Ending point
  * @param wind_x        Wind vector, x axis (TODO: Not yet implemented)
  * @param wind_y        Wind vector, y axis (TODO: Not yet implemented)
+ * @param tol           Precision used to declare a Dubins path well fit.
  * @return std::vector<std::unique_ptr<Dubins>> 
  */
-std::vector<std::unique_ptr<Dubins>> list_possible_baseDubins(double _climb, double _turn_radius, const Pose3D& _start, const Pose3D& _end, double wind_x = 0., double wind_y = 0.);
+std::vector<std::unique_ptr<Dubins>> list_possible_baseDubins(double _climb, double _turn_radius, const Pose3D& _start, const Pose3D& _end, double wind_x = 0., double wind_y = 0., double tol = DubinsFleetPlanner_PRECISION);
 
 /**
  * @brief Provide the shortest Dubins path for the given configuration (TODO: Take wind into account)
@@ -89,9 +90,10 @@ std::vector<std::unique_ptr<Dubins>> list_possible_baseDubins(double _climb, dou
  * @param _end          Ending point
  * @param wind_x        Wind vector, x axis (TODO: Not yet implemented)
  * @param wind_y        Wind vector, y axis (TODO: Not yet implemented)
+ * @param tol           Precision used to declare a Dubins path well fit.
  * @return std::unique_ptr<Dubins> 
  */
-std::unique_ptr<Dubins> shortest_possible_baseDubins(double _climb, double _turn_radius, const Pose3D& _start, const Pose3D& _end, double wind_x = 0., double wind_y = 0.);
+std::unique_ptr<Dubins> shortest_possible_baseDubins(double _climb, double _turn_radius, const Pose3D& _start, const Pose3D& _end, double wind_x = 0., double wind_y = 0., double tol = DubinsFleetPlanner_PRECISION);
 
 /**
  * @brief List all possible basic Dubins path (LSL,RSR,RSL,LSR,LRL,RLR,SLS,SRS) of fitting the target length

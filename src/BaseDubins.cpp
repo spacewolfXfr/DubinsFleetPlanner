@@ -912,18 +912,18 @@ std::vector<DynamicPathShape> set_length_SLS(const Pose3D &start, const Pose3D &
 
 /******************** Other ********************/
 
-std::vector<std::unique_ptr<Dubins>> list_possible_baseDubins(double _climb, double _turn_radius, const Pose3D &_start, const Pose3D &_end, double wind_x, double wind_y)
+std::vector<std::unique_ptr<Dubins>> list_possible_baseDubins(double _climb, double _turn_radius, const Pose3D &_start, const Pose3D &_end, double wind_x, double wind_y, double tol)
 {
     std::vector<std::unique_ptr<Dubins>> output;
 
-    auto LSL_pathshapes = set_radius_LSL(_start, _end, _turn_radius);
-    auto LSR_pathshapes = set_radius_LSR(_start, _end, _turn_radius);
-    auto RSR_pathshapes = set_radius_RSR(_start, _end, _turn_radius);
-    auto RSL_pathshapes = set_radius_RSL(_start, _end, _turn_radius);
-    auto RLR_pathshapes = set_radius_RLR(_start, _end, _turn_radius);
-    auto LRL_pathshapes = set_radius_LRL(_start, _end, _turn_radius);
-    auto SRS_pathshapes = set_radius_SRS(_start, _end, _turn_radius);
-    auto SLS_pathshapes = set_radius_SLS(_start, _end, _turn_radius);
+    auto LSL_pathshapes = set_radius_LSL(_start, _end, _turn_radius, tol);
+    auto LSR_pathshapes = set_radius_LSR(_start, _end, _turn_radius, tol);
+    auto RSR_pathshapes = set_radius_RSR(_start, _end, _turn_radius, tol);
+    auto RSL_pathshapes = set_radius_RSL(_start, _end, _turn_radius, tol);
+    auto RLR_pathshapes = set_radius_RLR(_start, _end, _turn_radius, tol);
+    auto LRL_pathshapes = set_radius_LRL(_start, _end, _turn_radius, tol);
+    auto SRS_pathshapes = set_radius_SRS(_start, _end, _turn_radius, tol);
+    auto SLS_pathshapes = set_radius_SLS(_start, _end, _turn_radius, tol);
 
     auto transfer = [&](auto &pathshapes)
     {
@@ -944,9 +944,9 @@ std::vector<std::unique_ptr<Dubins>> list_possible_baseDubins(double _climb, dou
     return output;
 }
 
-std::unique_ptr<Dubins> shortest_possible_baseDubins(double _climb, double _turn_radius, const Pose3D &_start, const Pose3D &_end, double wind_x, double wind_y)
+std::unique_ptr<Dubins> shortest_possible_baseDubins(double _climb, double _turn_radius, const Pose3D &_start, const Pose3D &_end, double wind_x, double wind_y, double tol)
 {
-    std::vector<std::unique_ptr<Dubins>> all_dubins = list_possible_baseDubins(_climb, _turn_radius, _start, _end, wind_x, wind_y);
+    std::vector<std::unique_ptr<Dubins>> all_dubins = list_possible_baseDubins(_climb, _turn_radius, _start, _end, wind_x, wind_y, tol);
 
     uint best_i;
     double min_length = INFINITY;

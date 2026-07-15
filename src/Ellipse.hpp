@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <tuple>
+#include <optional>
 
 class Ellipse
 {
@@ -22,35 +23,11 @@ private:
 public:
     // ----- Constructors ----- //
 
-    // Constructor from foci and semi-major axis
-    static Ellipse from_foci(double _fx, double _fy, double _fbx, double _fby, double _a)
-    {
-        Ellipse output = Ellipse();
-        output.fx = _fx;
-        output.fy = _fy;
-        output.fbx = _fbx;
-        output.fby = _fby;
-        output.a = _a;
-        output._recompute_center_from_foci();
-        output._recompute_c_from_foci();
-        output.b = std::sqrt(output.a*output.a - output.c*output.c);
-        output.offset_angle = std::atan2(output.fy-output.fby,output.fx-output.fbx);
-        return output;
-    }
+    // Constructor from foci and semi-major axis. Returns a null option if |FF'|/2 < a
+    static std::optional<Ellipse> from_foci(double _fx, double _fy, double _fbx, double _fby, double _a);
 
-    // Constructor from center, semi-major and semi-minor axes, and offset angle
-    static Ellipse from_parametric(double _Cx, double _Cy, double _a, double _b, double _offset_angle)
-    {
-        Ellipse output = Ellipse();
-        output.Cx = _Cx;
-        output.Cy = _Cy;
-        output.a = _a;
-        output.b = _b;
-        output.offset_angle = _offset_angle;
-        output.c = std::sqrt(_a*_a - _b*_b);
-        output._recompute_foci_from_Cab();
-        return output;
-    }
+    // Constructor from center, semi-major and semi-minor axes, and offset angle. Returns a null option is a or b is negative, or a < b.
+    static std::optional<Ellipse> from_parametric(double _Cx, double _Cy, double _a, double _b, double _offset_angle);
 
     // ----- Point generation ----- //
 
