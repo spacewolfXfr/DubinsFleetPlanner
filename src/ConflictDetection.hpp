@@ -46,25 +46,41 @@
  * 
  * @tparam m1 First shape type (STRAIGHT or a turn, RIGHT or LEFT)
  * @tparam m2 Second shape type (STRAIGHT or a turn, RIGHT or LEFT)
- * @param s1 First shape parameters
- * @param s2 Second shape parameters
+ * @param s1,s2 Shapes parameters
+ * @param d1,d2 Durations (in s) for which the shapes are followed, defining segment and circle arcs
  * @param duration Duration (in s) for which the shape are followed, defining segment and circle arcs
  * @return double The minimal XY separation distance, with its location parameter with respect to the first and second paths
  */
 template<DubinsMove m1, DubinsMove m2>
-std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1>& s1, const PathShape<m2>& s2, double duration);
+std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1>& s1, const PathShape<m2>& s2, double d1, double d2);
+
+/**
+ * @brief Specialization of its 4 arguments version such that the two durations are equal
+ */
+template<DubinsMove m1, DubinsMove m2>
+std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1>& s1, const PathShape<m2>& s2, double duration)
+{
+    return geometric_XY_dist<m1,m2>(s1,s2,duration,duration);
+}
 
 /**
  * @brief Given two shapes described by paths, compute their XY geometric separation 
  * 
  * This amount to the minimal euclidean distance between the two shapes, *ignoring* the vertical component.
  * 
- * @param s1 First shape
- * @param s2 Second shape
- * @param duration Duration (in s) for which the shape are followed, defining segment and circle arcs
+ * @param s1,s2 Shapes
+ * @param d1,d2 Durations (in s) for which the shapes are followed, defining segment and circle arcs
  * @return double The minimal XY separation distance, with its location parameter with respect to the first and second paths
  */
-std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2, double duration);
+std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2, double d1, double d2);
+
+/**
+ * @brief Specialization of its 4 arguments version such that the two durations are equal
+ */
+inline std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2, double duration)
+{
+    return geometric_XY_dist(s1,s2,duration,duration);
+}
 
 /**
  * @brief Given two shapes described by paths, compute their XY geometric separation by sampling
@@ -74,13 +90,12 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
  * @tparam m1 First shape type (STRAIGHT or a turn, RIGHT or LEFT)
  * @tparam m2 Second shape type (STRAIGHT or a turn, RIGHT or LEFT)
  * @tparam samples Number of samples for computing the minimal distance
- * @param s1 First shape parameters
- * @param s2 Second shape parameters
- * @param duration Duration (in s) for which the shape are followed, defining segment and circle arcs
+ * @param s1,s2 Shapes parameters
+ * @param d1,d2 Durations (in s) for which the shapes are followed, defining segment and circle arcs
  * @return double The minimal XY separation distance
  */
 template<DubinsMove m1, DubinsMove m2, uint samples>
-double sampled_geometric_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2, double duration)
+double sampled_geometric_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2, double d1, double d2)
 {
     static_assert(samples > 1);
 
@@ -89,8 +104,8 @@ double sampled_geometric_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s
 
     for(uint i = 0; i < samples; i++)
     {
-        s1_samples[i] = follow_dubins(s1,i*duration/(samples-1));
-        s2_samples[i] = follow_dubins(s2,i*duration/(samples-1));
+        s1_samples[i] = follow_dubins(s1,i*d1/(samples-1));
+        s2_samples[i] = follow_dubins(s2,i*d2/(samples-1));
     }
 
     for(uint i = 0; i <samples; i++)
@@ -102,6 +117,15 @@ double sampled_geometric_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s
     }
 
     return min_dist;
+}
+
+/**
+ * @brief Specialization of the 4 arguments version, where the two durations are equal
+ */
+template<DubinsMove m1, DubinsMove m2, uint samples>
+double sampled_geometric_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2, double duration)
+{
+    return sampled_geometric_XY_dist<m1,m2,samples>(s1,s2,duration,duration);
 }
 
 /**

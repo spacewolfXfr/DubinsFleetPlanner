@@ -483,19 +483,6 @@ public:
     }
 
     /**
-     * @brief Check wether two Dubins paths intersect *as drawings* (i.e. neglecting dynamics)
-     * 
-     * @param first     First path
-     * @param second    Second path
-     * @param min_dist  Minimal separation
-     * @param tol       Solver tolerance
-     * @return true     Paths are not separated (so they intersect)
-     * @return false    Paths are separated (they do not intersect)
-     */
-    static bool are_XY_geometric_intersecting(const Dubins &first, const Dubins &second,
-                                        double min_dist, double tol);
-
-    /**
      * @brief Generic type for separation function
      *
      * The arguments are:

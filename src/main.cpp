@@ -221,7 +221,19 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
         return false;
     }
     
-    // Implement default behaviors
+    // == Implement default behaviors ==
+    // If only one of the two extensions is set, set the other to contain only 0 (no extension, but required for underlying code)
+    if (parsed_args.start_length_extensions.size() > 0 && parsed_args.end_length_extensions.size() == 0)
+    {
+        parsed_args.end_length_extensions = {0.};
+    }
+
+    if (parsed_args.end_length_extensions.size() > 0 && parsed_args.start_length_extensions.size() == 0)
+    {
+        parsed_args.start_length_extensions = {0.};
+    }
+
+    // Default values for line-fitting ratios
     if (parsed_args.line_fit && parsed_args.ratios.size() == 0)
     {
         parsed_args.ratios = {0,0.5,1.};
@@ -281,22 +293,21 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     std::vector<Dubins> obstacle_paths = {};
     std::vector<AircraftStats> obstacle_stats = {};
-    std::vector<Dubins> geometric_obstacle_paths = {};
-    std::vector<AircraftStats> geometric_obstacle_stats = {};
     double __wind_x,__wind_y,__min_sep,__z_alpha;
 
     if (!args.obstacle_pathname.empty())
     {
         std::ifstream obstacle_src(args.obstacle_pathname);
         DubinsPP::InputParser::parse_paths_as_ModernJSON(obstacle_src,obstacle_paths,obstacle_stats,
-            __min_sep,__wind_x,__wind_y,__z_alpha);
+            __min_sep,__wind_x,__wind_y,__z_alpha);       
     }
     
+
+    std::vector<DynamicPathShape> geometric_obstacles = {};
     if (!args.geometric_obstacle_pathname.empty())
     {
-        std::ifstream geo_obstacle_src(args.geometric_obstacle_pathname);
-        DubinsPP::InputParser::parse_paths_as_ModernJSON(geo_obstacle_src,geometric_obstacle_paths,geometric_obstacle_stats,
-            __min_sep,__wind_x,__wind_y,__z_alpha);
+        std::ifstream limits_src(args.geometric_obstacle_pathname);
+        DubinsPP::InputParser::parse_pathshapes_ModernJSON(limits_src,geometric_obstacles);
     }
 
     // ----- Parsing case data ----- //
@@ -416,7 +427,7 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     {
         planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,extra,starts,ends,stats,args.separation,timeslots,
             args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
-            obstacle_paths,obstacle_stats,geometric_obstacle_paths,geometric_obstacle_stats
+            obstacle_paths,obstacle_stats,geometric_obstacles
             );
     }
     else
@@ -430,7 +441,7 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
             args.thread_num,
             args.max_solver_time,
             obstacle_paths,obstacle_stats,
-            geometric_obstacle_paths,geometric_obstacle_stats);
+            geometric_obstacles);
     }
 
     extra.duration = chrono::thread_clock::now(boost::throws()) - start;
@@ -441,19 +452,19 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     {
         ExtraPPResults _backup;
         good_solution = false;
-        std::cerr << "WARNING: Could not find a solution; retrying with SEPARATION DISABLED" << std::endl;
+        std::cerr << "WARNING: Could not find a solution; retrying with HALF SEPARATION ( " << args.separation/2 << " )" << std::endl;
         
         if (!empty_timeslots)
         {
             planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,0,timeslots,
                 args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
-                obstacle_paths,obstacle_stats,geometric_obstacle_paths,geometric_obstacle_stats
+                obstacle_paths,obstacle_stats,geometric_obstacles
                 );
         }
         else
         {
             planner->solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,
-                0,dt,
+                args.separation/2,dt,
                 args.wind_x,args.wind_y,
                 args.reallocate,
                 args.max_iters,
@@ -461,7 +472,7 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
                 args.thread_num,
                 args.max_solver_time,
                 obstacle_paths,obstacle_stats,
-                geometric_obstacle_paths,geometric_obstacle_stats);
+                geometric_obstacles);
         }
     }
         

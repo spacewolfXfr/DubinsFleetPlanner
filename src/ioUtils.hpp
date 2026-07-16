@@ -90,7 +90,13 @@ namespace DubinsPP
             double& wind_x, double& wind_y,
             double& z_alpha);
 
-
+        /**
+         * @brief Parse from a stream an array of path shapes
+         * 
+         * @param s         Input stream
+         * @param shapes    Parsed shapes
+         */
+        void parse_pathshapes_ModernJSON(std::istream& s, std::vector<DynamicPathShape>& shapes);
 
     } // namespace InputParser
 

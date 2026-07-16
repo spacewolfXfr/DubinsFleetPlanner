@@ -4,6 +4,7 @@ import dataclasses
 import typing
 import subprocess
 import pathlib
+import json
 
 import numpy as np
 
@@ -34,13 +35,31 @@ from ioUtils import print_FleetPlan_to_JSON,parse_trajectories_from_JSON
 
 from plotting import plot_pose2d_sequence,transpose_list_of_trajectories,min_XY_dist
 
+#################### Utility ####################
 
+def make_box_boundary_file(xmin:float,xmax:float,ymin:float,ymax:float,filepath:str|pathlib.Path):
+        low_left    = (xmin, ymin, 0)
+        low_right   = (xmax, ymin, 0)
+        high_left   = (xmin, ymax, 0)
+        high_right  = (xmax, ymax, 0)
+        
+        sections = [
+            BasicPath.from_2_points(low_left,low_right).asdict(),
+            BasicPath.from_2_points(low_left,high_left).asdict(),
+            BasicPath.from_2_points(high_right,low_right).asdict(),
+            BasicPath.from_2_points(high_left,high_right).asdict()
+        ]
+        
+        with open(filepath,mode='w') as f:
+            json.dump({'sections':sections},f)
 
 #################### Ongoing flights simulator ####################
 
 
 def solve_problem(solver:pathlib.Path,src_dir:pathlib.Path,dest_dir:pathlib.Path,
-                   separation:float, wind:tuple[float,float],threads:int,obstacle_path:typing.Optional[str],
+                   separation:float, wind:tuple[float,float],threads:int,
+                   obstacle_path:typing.Optional[pathlib.Path],
+                   geometric_obstacles_path:typing.Optional[pathlib.Path],
                    start_extensions:list[float] = [],
                    end_extensions:list[float] = []) -> subprocess.CompletedProcess[bytes]:
     cmd = []
@@ -73,7 +92,11 @@ def solve_problem(solver:pathlib.Path,src_dir:pathlib.Path,dest_dir:pathlib.Path
     
     if obstacle_path is not None:
         cmd.append('-O')
-        cmd.append(str(obstacle_path))
+        cmd.append(obstacle_path.resolve())
+        
+    if geometric_obstacles_path is not None:
+        cmd.append('-G')
+        cmd.append(geometric_obstacles_path.resolve())
         
     if len(start_extensions) > 0:
         cmd.append('--extend-start')
@@ -99,9 +122,10 @@ class ArrivalsSimulator:
     threshold_shift:float   # By how much the endpoint have been moved along a straight line, in NM
     cmd_shift:float         # Minimal straight length at the start of newly planned trajectory, in NM
     tasklist:list[FlightEndpoints]
-    input_json_path:pathlib.Path    = pathlib.Path("input_json.json")
-    output_json_path:pathlib.Path   = pathlib.Path("output_json.json")
-    input_csv_path:pathlib.Path     = pathlib.Path("input_csv.csv")
+    obstacles_json_path:pathlib.Path            = pathlib.Path("obstacles_json.json")
+    output_json_path:pathlib.Path               = pathlib.Path("output_json.json")
+    input_csv_path:pathlib.Path                 = pathlib.Path("input_csv.csv")
+    geometric_obstacle_json_path:pathlib.Path   = pathlib.Path("geometric_obstacles.json")
     max_reschedule:int  = 3  # Maximum number of reschedule for each aircraft
     separation:float    = 5. # Overriden by the values in `flying` if it is defined
     z_alpha:float       = 1. # Overriden by the values in `flying` if it is defined
@@ -396,7 +420,7 @@ class ArrivalsSimulator:
                 
                 
                 if len(noncandidate_acs) > 0:
-                    print_FleetPlan_to_JSON(self.input_json_path,self.scheduled,noncandidate_acs,True)
+                    print_FleetPlan_to_JSON(self.obstacles_json_path,self.scheduled,noncandidate_acs,True)
                 
                     obstacles_exist = True
             
@@ -425,7 +449,8 @@ class ArrivalsSimulator:
                     self.separation,
                     (self.wind_x,self.wind_y),
                     threads,
-                    str(self.input_json_path.absolute()) if obstacles_exist else None,
+                    self.obstacles_json_path if obstacles_exist else None,
+                    self.geometric_obstacle_json_path if self.geometric_obstacle_json_path.exists() else None,
                     [self.cmd_shift],
                     [self.threshold_shift]
                 )
@@ -613,6 +638,8 @@ def main():
                         help='Distance relative to runway threshold for defining last straight, in NM. Default to 10.',default=10)
     parser.add_argument('--cmd-shift',type=float,dest='cmd_shift',
                         help="Duration (in minutes) for which no commands should issued (that is, go straight). Default to 2 minutes.", default=2)
+    parser.add_argument('--border',type=str,dest='border',
+                        help="Either the distance in NM from the aircraft spawning zone which should be considered as a no-fly zone, or the name of a JSON file containing obstacles (if it cannot be parsed as float). Default to 5.", default=5)
     parser.add_argument('--epsg',type=int,help="EPSG code for XY projection of (lat,lon) coordinates from WGS84. Default to 9794 (i.e. Lambert-93)",
                         default=9794)
     
@@ -690,6 +717,26 @@ def main():
                                 wind_y=float(args.wind[1]))
         
         sim.attach_axes(ax)
+        
+        ## Generate borders ##
+        try:
+            b = float(args.border)
+            
+            xmin,xmax = ax.get_xlim()
+            ymin,ymax = ax.get_ylim()
+            
+            make_box_boundary_file(xmin+b,xmax-b,ymin+b,ymax-b,sim.geometric_obstacle_json_path)
+            ax.plot(
+                [xmin+b,xmin+b,xmax-b,xmax-b,xmin+b],
+                [ymin+b,ymax-b,ymax-b,ymin+b,ymin+b],
+                'k-',label='Border'
+            )
+        except ValueError:
+            sim.geometric_obstacle_json_path = args.border
+        
+        ## Run simulation ##
+        
+        
         
         sim.simulate(pd.Timedelta(f"{args.timestep} minute"),
             pd.Timedelta(f"{args.time_threshold} minute"),

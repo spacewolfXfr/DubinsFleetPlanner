@@ -123,9 +123,9 @@ std::tuple<double,double,double> geometric_distance(const PathShape<STRAIGHT> &s
     obj_matrix(1,0) = obj_matrix(0,1);
     obj_matrix(1,1) =  v2.dot(v2);
 
-    Eigen::Vector2d obj_vector(delta.dot(v1), delta.dot(v2));
+    Eigen::Vector2d obj_vector(-delta.dot(v1), delta.dot(v2));
 
-    Eigen::Vector2d closest_params = obj_matrix.ldlt().solve(obj_vector);
+    Eigen::Vector2d closest_params = -obj_matrix.ldlt().solve(obj_vector);
 
     // Since it is the global optimum, if it is valid, it is the best
     if (valid_param(closest_params.x()) && valid_param(closest_params.y()))
@@ -213,7 +213,7 @@ std::tuple<double,double,double> geometric_distance(const PathShape<STRAIGHT> &s
 // ----- XY distances ----- //
 
 template<> [[gnu::pure]]
-std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<STRAIGHT> &s2, double duration)
+std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<STRAIGHT> &s2, double d1, double d2)
 {
     Eigen::Vector2d v1(s1.p1,s1.p2);
     Eigen::Vector2d v2(s2.p1,s2.p2);
@@ -225,12 +225,13 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1
     Eigen::Vector2d p1_s(s1.x,s1.y);
     Eigen::Vector2d p2_s(s2.x,s2.y);
 
-    Eigen::Vector2d p1_e = p1_s + duration*v1;
-    Eigen::Vector2d p2_e = p2_s + duration*v2;
+    Eigen::Vector2d p1_e = p1_s + d1*v1;
+    Eigen::Vector2d p2_e = p2_s + d2*v2;
 
 
-    // Function to check if a parameter is in the allowed range
-    auto valid_param = [=](double t) -> bool {return (0. <= t) && (t <= duration);};
+    // Functions to check if a parameter is in the allowed range
+    auto valid_param_1 = [=](double t) -> bool {return (0. <= t) && (t <= d1);};
+    auto valid_param_2 = [=](double t) -> bool {return (0. <= t) && (t <= d2);};
 
 
     // -- Line-line optimum
@@ -241,12 +242,12 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1
     obj_matrix(1,0) = obj_matrix(0,1);
     obj_matrix(1,1) =  v2.dot(v2);
 
-    Eigen::Vector2d obj_vector(delta.dot(v1), delta.dot(v2));
+    Eigen::Vector2d obj_vector(-delta.dot(v1), delta.dot(v2));
 
-    Eigen::Vector2d closest_params = obj_matrix.ldlt().solve(obj_vector);
+    Eigen::Vector2d closest_params = -obj_matrix.ldlt().solve(obj_vector);
 
     // Since it is the global optimum, if it is valid, it is the best
-    if (valid_param(closest_params.x()) && valid_param(closest_params.y()))
+    if (valid_param_1(closest_params.x()) && valid_param_2(closest_params.y()))
     {
         return std::make_tuple(
             ((p1_s + closest_params.x()*v1) - (p2_s + closest_params.y()*v2)).norm(),
@@ -272,14 +273,14 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1
         }
     };
 
-    argmin_output((p1_e-p2_e).norm(),   duration, duration);
-    argmin_output((p1_s-p2_e).norm(),   0.      , duration);
-    argmin_output((p1_e-p2_s).norm(),   duration, 0.);
+    argmin_output((p1_e-p2_e).norm(),   d1, d2);
+    argmin_output((p1_s-p2_e).norm(),   0., d2);
+    argmin_output((p1_e-p2_s).norm(),   d1, 0.);
 
     // -- Projected distances
 
     double t1_s = (p1_s-p2_s).dot(v2)/v2_n2;
-    if (valid_param(t1_s))
+    if (valid_param_2(t1_s))
     {
         // min_dist = std::min(min_dist,(p1_s-(t1_s*v2 + p2_s)).norm());
         argmin_output(
@@ -290,18 +291,18 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1
     }
 
     double t1_e = (p1_e-p2_s).dot(v2)/v2_n2;
-    if (valid_param(t1_e))
+    if (valid_param_2(t1_e))
     {
         // min_dist = std::min(min_dist,(p1_e-(t1_e*v2 + p2_s)).norm());
         argmin_output(
             (p1_e-(t1_e*v2 + p2_s)).norm(),
-            duration,
+            d1,
             t1_e
         );
     }
 
     double t2_s = (p2_s-p1_s).dot(v1)/v1_n2;
-    if (valid_param(t2_s))
+    if (valid_param_1(t2_s))
     {
         // min_dist = std::min(min_dist,(p2_s-(t2_s*v1 + p1_s)).norm());
         argmin_output(
@@ -312,13 +313,13 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1
     }
 
     double t2_e = (p2_e-p1_s).dot(v1)/v1_n2;
-    if (valid_param(t2_e))
+    if (valid_param_1(t2_e))
     {
         // min_dist = std::min(min_dist,(p2_e-(t2_e*v1 + p1_s)).norm());
         argmin_output(
             (p2_e-(t2_e*v1 + p1_s)).norm(),
             t2_e,
-            duration
+            d2
         );
     }
 
@@ -326,17 +327,18 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<STRAIGHT> &s1
 }
 
 template<DubinsMove m1, DubinsMove m2> [[gnu::pure]]
-std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2, double duration)
+std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2, double d1, double d2)
 {
     static_assert(!(m1==STRAIGHT && m2==STRAIGHT));
 
     if (m2==STRAIGHT)
     {
-        return geometric_XY_dist(s2,s1,duration);
+        return geometric_XY_dist(s2,s1,d2,d1);
     }
 
-    // Function to check if a parameter is in the allowed range
-    auto valid_param = [=](double t) -> bool {return (0. <= t) && (t <= duration);};
+    // Functions to check if a parameter is in the allowed range
+    auto valid_param_1 = [=](double t) -> bool {return (0. <= t) && (t <= d1);};
+    auto valid_param_2 = [=](double t) -> bool {return (0. <= t) && (t <= d2);};
 
     std::tuple<double,double,double> output = std::make_tuple(
         INFINITY,NAN,NAN
@@ -359,14 +361,14 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
         Eigen::Vector2d p1_s(s1.x,s1.y);
         Eigen::Vector2d v1(s1.p1,s1.p2);
         double v1_n2 = v1.squaredNorm();
-        Eigen::Vector2d p1_e = p1_s + duration*v1;
+        Eigen::Vector2d p1_e = p1_s + d1*v1;
         
         Eigen::Vector2d c2(s2.x,s2.y);
 
         double r        = s2.p1;
         double omega    = s2.p2;
         double phi      = s2.p4;
-        double end_phi  = phi + omega*duration;
+        double end_phi  = phi + omega*d2;
 
         
         // -- Line-Circle intersection
@@ -399,7 +401,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
             if (!std::isnan(phi1_norm))
             {
                 double t1 = (pc1 + c2 - p1_s).dot(v1)/v1_n2;
-                if (valid_param(t1))
+                if (valid_param_1(t1))
                 {
                     double pt1 = (phi1_norm-phi)/omega;
                     return std::make_tuple(0.,t1,pt1);
@@ -411,7 +413,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
             if (!std::isnan(phi2_norm))
             {
                 double t2 = (pc2 + c2 - p1_s).dot(v1)/v1_n2;
-                if (valid_param(t2))
+                if (valid_param_1(t2))
                 {
                     double pt2 = (phi2_norm-phi)/omega;
                     return std::make_tuple(0.,t2,pt2);
@@ -422,7 +424,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
 
         // -- Project circle center on line
         double t_line = (c2-p1_s).dot(v1)/v1_n2;
-        if (valid_param(t_line))
+        if (valid_param_1(t_line))
         {
             Eigen::Vector2d c2_proj = p1_s+t_line*v1 -c2;
             double phi_line = std::atan2(c2_proj.y(),c2_proj.x());
@@ -444,7 +446,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
         Eigen::Vector2d c2_e = c2 + r*angle_vector(end_phi);
 
         double t2_s = (c2_s - p1_s).dot(v1)/v1_n2;
-        if (valid_param(t2_s))
+        if (valid_param_1(t2_s))
         {
             // min_dist = std::min(min_dist,(c2_s-(t2_s*v1 + p1_s)).norm());
             argmin_output(
@@ -455,13 +457,13 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
         }
 
         double t2_e = (c2_e - p1_s).dot(v1)/v1_n2;
-        if (valid_param(t2_e))
+        if (valid_param_1(t2_e))
         {
             // min_dist = std::min(min_dist,(c2_e-(t2_e*v1 + p1_s)).norm());
             argmin_output(
                 (c2_e-(t2_e*v1 + p1_s)).norm(),
                 t2_e,
-                duration
+                d2
             );
         }
         
@@ -477,7 +479,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
             argmin_output(
                 (p_phi_s-r*angle_vector(phi_s)).norm(),
                 (phi_s_norm-phi)/omega,
-                duration
+                d2
             );
         }
 
@@ -492,7 +494,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
             argmin_output(
                 (p_phi_e-r*angle_vector(phi_e)).norm(),
                 (phi_e_norm-phi)/omega,
-                duration
+                d2
             );
         }
 
@@ -513,19 +515,19 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
 
         argmin_output(
             (p1_e-c2_e).norm(),
-            duration,
-            duration
+            d1,
+            d2
         );
 
         argmin_output(
             (p1_s-c2_e).norm(),
             0.,
-            duration
+            d2
         );
 
         argmin_output(
             (p1_e-c2_s).norm(),
-            duration,
+            d1,
             0.
         );
 
@@ -540,7 +542,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
         double r1        = s1.p1;
         double omega1    = s1.p2;
         double phi1      = s1.p4;
-        double end_phi1  = phi1 + omega1*duration;
+        double end_phi1  = phi1 + omega1*d1;
 
 
         Eigen::Vector2d c2(s2.x,s2.y);
@@ -548,7 +550,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
         double r2        = s2.p1;
         double omega2    = s2.p2;
         double phi2      = s2.p4;
-        double end_phi2  = phi2 + omega2*duration;
+        double end_phi2  = phi2 + omega2*d2;
 
         Eigen::Vector2d dC = c2 - c1;
         double dist2 = dC.squaredNorm();
@@ -566,8 +568,12 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
             double x_2 = dC.x();
             double y_2 = dC.y();
             
-            double sol1x = (x_2*x_2*x_2 + x_2*y_2*y_2 + delta_r2*x_2 - sqrt_discr*y_2)/(2*dist2);
-            double sol1y = (y_2*y_2*y_2 + x_2*x_2*y_2 + delta_r2*y_2 + sqrt_discr*x_2)/(2*dist2);
+            // double sol1x = (x_2*x_2*x_2 + x_2*y_2*y_2 + delta_r2*x_2 - sqrt_discr*y_2)/(2*dist2);
+            // double sol1y = (y_2*y_2*y_2 + x_2*x_2*y_2 + delta_r2*y_2 + sqrt_discr*x_2)/(2*dist2);
+
+            // Factoring, and hopeful the compiler does common subexpression elimination
+            double sol1x = ((x_2*x_2 + y_2*y_2 + delta_r2)*x_2 - sqrt_discr*y_2)/(2*dist2);
+            double sol1y = ((y_2*y_2 + x_2*x_2 + delta_r2)*y_2 + sqrt_discr*x_2)/(2*dist2);
 
             // Floating-point troubles...
             // assert((x_2*x_2*x_2 + x_2*y_2*y_2 + delta_r2*x_2 - sqrt_discr*y_2)/(2*dist2) == (1/2)*(x_2*x_2*x_2 + x_2*y_2*y_2 + delta_r2*x_2 - sqrt_discr*y_2)/(dist2));
@@ -700,7 +706,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
             // min_dist = std::min(min_dist,std::abs(r2 - (p1_e - c2).norm()));
             argmin_output(
                 std::abs(r2 - (p1_e - c2).norm()),
-                duration,
+                d1,
                 phi1_e_norm
             );
         }
@@ -728,7 +734,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
             argmin_output(
                 std::abs(r1 - (p2_e - c1).norm()),
                 phi2_e_norm,
-                duration
+                d2
             );
         }
 
@@ -742,27 +748,27 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1> &s1, cons
         // });
 
         argmin_output((p1_s-p2_s).norm(),   0., 0.);
-        argmin_output((p1_e-p2_e).norm(),   duration, duration);
-        argmin_output((p1_s-p2_e).norm(),   0.      , duration);
-        argmin_output((p1_e-p2_s).norm(),   duration, 0.);
+        argmin_output((p1_e-p2_e).norm(),   d1, d2);
+        argmin_output((p1_s-p2_e).norm(),   0., d2);
+        argmin_output((p1_e-p2_s).norm(),   d1, 0.);
 
         return output;
     }
 }
 
 // Explicitely declare all possible specializations
-template std::tuple<double,double,double> geometric_XY_dist<STRAIGHT,STRAIGHT>(const PathShape<STRAIGHT>& , const PathShape<STRAIGHT>&, double);
-template std::tuple<double,double,double> geometric_XY_dist<STRAIGHT,LEFT>    (const PathShape<STRAIGHT>& , const PathShape<LEFT>&    , double);
-template std::tuple<double,double,double> geometric_XY_dist<STRAIGHT,RIGHT>   (const PathShape<STRAIGHT>& , const PathShape<RIGHT>&   , double);
-template std::tuple<double,double,double> geometric_XY_dist<LEFT,STRAIGHT>    (const PathShape<LEFT>&     , const PathShape<STRAIGHT>&, double);
-template std::tuple<double,double,double> geometric_XY_dist<RIGHT,STRAIGHT>   (const PathShape<RIGHT>&    , const PathShape<STRAIGHT>&, double);
-template std::tuple<double,double,double> geometric_XY_dist<LEFT,LEFT>        (const PathShape<LEFT>&     , const PathShape<LEFT>&    , double);
-template std::tuple<double,double,double> geometric_XY_dist<RIGHT,LEFT>       (const PathShape<RIGHT>&    , const PathShape<LEFT>&    , double);
-template std::tuple<double,double,double> geometric_XY_dist<LEFT,RIGHT>       (const PathShape<LEFT>&     , const PathShape<RIGHT>&   , double);
-template std::tuple<double,double,double> geometric_XY_dist<RIGHT,RIGHT>      (const PathShape<RIGHT>&    , const PathShape<RIGHT>&   , double);
+template std::tuple<double,double,double> geometric_XY_dist<STRAIGHT,STRAIGHT>(const PathShape<STRAIGHT>& , const PathShape<STRAIGHT>&, double, double);
+template std::tuple<double,double,double> geometric_XY_dist<STRAIGHT,LEFT>    (const PathShape<STRAIGHT>& , const PathShape<LEFT>&    , double, double);
+template std::tuple<double,double,double> geometric_XY_dist<STRAIGHT,RIGHT>   (const PathShape<STRAIGHT>& , const PathShape<RIGHT>&   , double, double);
+template std::tuple<double,double,double> geometric_XY_dist<LEFT,STRAIGHT>    (const PathShape<LEFT>&     , const PathShape<STRAIGHT>&, double, double);
+template std::tuple<double,double,double> geometric_XY_dist<RIGHT,STRAIGHT>   (const PathShape<RIGHT>&    , const PathShape<STRAIGHT>&, double, double);
+template std::tuple<double,double,double> geometric_XY_dist<LEFT,LEFT>        (const PathShape<LEFT>&     , const PathShape<LEFT>&    , double, double);
+template std::tuple<double,double,double> geometric_XY_dist<RIGHT,LEFT>       (const PathShape<RIGHT>&    , const PathShape<LEFT>&    , double, double);
+template std::tuple<double,double,double> geometric_XY_dist<LEFT,RIGHT>       (const PathShape<LEFT>&     , const PathShape<RIGHT>&   , double, double);
+template std::tuple<double,double,double> geometric_XY_dist<RIGHT,RIGHT>      (const PathShape<RIGHT>&    , const PathShape<RIGHT>&   , double, double);
 
 // Work around for the dynamic case
-std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2, double duration)
+std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2, double d1, double d2)
 {
     switch (s1.m)
     {
@@ -773,14 +779,14 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
             return geometric_XY_dist(
                 to_static_shape<STRAIGHT>(s1),
                 to_static_shape<STRAIGHT>(s2),
-                duration
+                d1,d2
             );
 
         case LEFT:
             return geometric_XY_dist(
                 to_static_shape<STRAIGHT>(s1),
                 to_static_shape<LEFT>(s2),
-                duration
+                d1,d2
             );
             break;
 
@@ -788,7 +794,7 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
             return geometric_XY_dist(
                 to_static_shape<STRAIGHT>(s1),
                 to_static_shape<RIGHT>(s2),
-                duration
+                d1,d2
             );
             break;
         
@@ -805,14 +811,14 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
             return geometric_XY_dist(
                 to_static_shape<LEFT>(s1),
                 to_static_shape<STRAIGHT>(s2),
-                duration
+                d1,d2
             );
 
         case LEFT:
             return geometric_XY_dist(
                 to_static_shape<LEFT>(s1),
                 to_static_shape<LEFT>(s2),
-                duration
+                d1,d2
             );
             break;
 
@@ -820,7 +826,7 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
             return geometric_XY_dist(
                 to_static_shape<LEFT>(s1),
                 to_static_shape<RIGHT>(s2),
-                duration
+                d1,d2
             );
             break;
         
@@ -837,14 +843,14 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
             return geometric_XY_dist(
                 to_static_shape<RIGHT>(s1),
                 to_static_shape<STRAIGHT>(s2),
-                duration
+                d1,d2
             );
 
         case LEFT:
             return geometric_XY_dist(
                 to_static_shape<RIGHT>(s1),
                 to_static_shape<LEFT>(s2),
-                duration
+                d1,d2
             );
             break;
 
@@ -852,7 +858,7 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
             return geometric_XY_dist(
                 to_static_shape<RIGHT>(s1),
                 to_static_shape<RIGHT>(s2),
-                duration
+                d1,d2
             );
             break;
         

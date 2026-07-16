@@ -106,7 +106,7 @@ void Dubins::recompute()
     }
 
 
-    const std::vector<Pose3D> Dubins::get_positions(std::vector<double> &lens, bool sorted = false) const
+    const std::vector<Pose3D> Dubins::get_positions(std::vector<double> &lens, bool sorted) const
     {
         std::vector<Pose3D> output;
         if (!sorted)
@@ -719,22 +719,6 @@ bool Dubins::is_XY_separated_from(const Dubins &other, double this_speed, double
     }
 
     return true;
-}
-
-bool Dubins::are_XY_geometric_intersecting(const Dubins &first, const Dubins &second,
-                                        double min_dist, double tol)
-{
-    for(auto& sec1 : first.sections)
-    {
-        for(auto& sec2 : second.sections)
-        {
-            double v,l1,l2;
-
-            std::tie(v,l1,l2) = geometric_XY_dist(sec1,sec2)
-        }
-    }
-
-    return false;
 }
 
 Dubins join_paths(const Dubins &first, const Dubins &second, double precision_tol)

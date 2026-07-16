@@ -356,6 +356,21 @@ void DubinsPP::InputParser::parse_paths_as_ModernJSON(std::istream& s,
     }
 }
 
+void DubinsPP::InputParser::parse_pathshapes_ModernJSON(std::istream& s, std::vector<DynamicPathShape>& shapes)
+{
+    json j;
+
+    s >> j;
+
+    for(const json &j_bpath : j.at("sections"))
+    {
+        DynamicPathShape bshape;
+        from_json(j_bpath,bshape);
+        shapes.push_back(bshape);
+    }
+}
+            
+
 // ---------------------------------------- Output handling ---------------------------------------- //
 
 // ----- Conflicts ----- //
@@ -432,6 +447,8 @@ void to_json_ModernTrajectory(json& j,
     {
         for(DynamicPathShape s : path.get_all_sections())
         {
+            if (s.length < 1e-9) continue;
+            
             s.set_planar_speed(stats.airspeed);
             
             json j_section;
@@ -440,32 +457,6 @@ void to_json_ModernTrajectory(json& j,
 
             sections.push_back(j_section);
         }
-        // std::vector<double> endpoints_locs = path.get_endpoints_locs();
-        // std::vector<Pose3D> endpoints = path.get_endpoints();
-        // uint sections_N = endpoints.size()-1;
-        // uint sec_actual_index = 0;
-
-        // for(uint i = 0; i < sections_N; i++)
-        // {
-        //     double sec_len = endpoints_locs[i+1]-endpoints_locs[i];
-        //     double sec_middle = (endpoints_locs[i+1]+endpoints_locs[i])/2;
-
-        //     if (sec_len < 1e-9)
-        //     {
-        //         continue;
-        //     }
-
-        //     DynamicPathShape shape = path.get_pathshape(i);
-            
-        //     json j_section;
-
-        //     to_json(j_section,shape);
-            
-        //     j_section["length"] = sec_len;
-
-        //     sections.push_back(j_section);
-        //     sec_actual_index++;
-        // }
 
         j_path["sections"] = sections;
     }

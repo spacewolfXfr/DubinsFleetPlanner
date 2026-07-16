@@ -21,6 +21,7 @@
 #include <format>
 
 #include "BaseDubins.hpp"
+#include "ConflictDetection.hpp"
 
 /*************************************************************************************/
 /*************************************************************************************/
@@ -208,6 +209,47 @@ std::set<uint> acs_without_paths(const ListOfPossibilities& all_paths)
     
     return output;
 }
+
+
+void filter_2D_geometric_colliding_paths(ListOfPossibilities& all_paths, const std::vector<DynamicPathShape>& obstacles, double min_sep)
+{
+    for(uint i = 0; i < all_paths.size(); i++)
+    {
+        std::vector<std::unique_ptr<Dubins>>& path_list = all_paths[i];
+        std::vector<std::unique_ptr<Dubins>> filtered_paths;
+        
+        for(std::unique_ptr<Dubins>& p_ptr : path_list)
+        {
+            bool conflict_free = true;
+
+            for(uint j = 0; j < obstacles.size(); j++)
+            {
+                const Dubins& p = *p_ptr;
+                const DynamicPathShape& c = obstacles[j];
+                 
+                for(const DynamicPathShape& s : p.get_all_sections())
+                {
+                    std::tuple<double,double,double> res = geometric_XY_dist(s,c,s.duration(),c.duration());
+                    if (std::get<0>(res) <= min_sep)
+                    {
+                        conflict_free = false;
+                        break;
+                    }
+                }
+
+                if (!conflict_free) break;
+            }
+
+            if (conflict_free)
+            {
+                filtered_paths.push_back(std::move(p_ptr));
+            }
+        }
+
+        all_paths[i] = std::move(filtered_paths);
+    }
+}
+
 
 // ---------- Smart sampling ---------- //
 

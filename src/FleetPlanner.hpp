@@ -117,7 +117,7 @@ std::set<uint> acs_without_paths(const ListOfPossibilities& all_paths);
  * @tparam distance_function    Function computing the distance between two path (usually underline the separation one)
  * @param all_paths             Candidate paths to be filtered
  * @param stats                 Aircraft stats associated to candidate paths
- * @param obstacle_paths          Obstacle paths
+ * @param obstacle_paths        Obstacle paths
  * @param obstacle_stats        Stats of obstacle aircraft paths
  */
 template<Dubins::DubinsDistanceFunction distance_function>
@@ -159,6 +159,16 @@ void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<Ai
         all_paths[i] = std::move(filtered_paths);
     }
 }
+
+/**
+ * @brief Remove from the list of possibilities the paths which get geometrically close to the given obstacles.
+ * DOES NOT CONSIDER VERTICALITY.
+ * 
+ * @param all_paths Candidate paths to be filtered
+ * @param obstacles Obstacle elements
+ * @param min_sep   Minimal separation desired (non-negative)
+ */
+void filter_2D_geometric_colliding_paths(ListOfPossibilities& all_paths, const std::vector<DynamicPathShape>& obstacles, double min_sep);
 
 // ---------- Smart sampling ---------- //
 
@@ -618,7 +628,6 @@ protected:
 #if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
         assert(starts.size() <= ends.size());
         assert(starts.size() == stats.size());
-        assert(starts.size() == timeslots.size());
 #endif
         uint N = starts.size();
 
@@ -685,7 +694,8 @@ public:
         double wind_x = 0., double wind_y = 0.,
         bool reallocate = false,
         int threads = 0,
-        const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {}
+        const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
+        const std::vector<DynamicPathShape>& geometric_obstacles = {}
     ) const
     {
         // Timing
@@ -730,6 +740,8 @@ public:
         }
 
         filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,min_sep);
+
+        filter_2D_geometric_colliding_paths(possibilities,geometric_obstacles,precision_tol);
 
         std::set<uint> nopaths_acs = acs_without_paths(possibilities);
 
@@ -817,7 +829,7 @@ public:
         int threads = -1,
         int max_time_s = 60,
         const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
-        const std::vector<Dubins>& geo_obstacle_paths = {}, const std::vector<AircraftStats>& geo_obstacle_stats = {}
+        const std::vector<DynamicPathShape>& geometric_obstacles = {}
     ) const
     {
         // Timing
@@ -942,7 +954,8 @@ public:
                 wind_x,wind_y,
                 reallocate,
                 threads,
-                obstacle_paths,obstacle_stats);
+                obstacle_paths,obstacle_stats,
+                geometric_obstacles);
 
             iter->NoPathsACs = nopaths_acs;
             iter->done = true;
@@ -1054,7 +1067,7 @@ public:
         int threads = -1,
         bool add_shortest = false,
         const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
-        const std::vector<Dubins>& geo_obstacle_paths = {}, const std::vector<AircraftStats>& geo_obstacle_stats = {}
+        const std::vector<DynamicPathShape>& geometric_obstacles = {}
     ) const
     {
         // Timing
@@ -1112,6 +1125,7 @@ public:
 
         filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,min_sep);
 
+        filter_2D_geometric_colliding_paths(possibilities,geometric_obstacles,precision_tol);
 
         std::set<uint> nopaths_acs = acs_without_paths(possibilities);
 
