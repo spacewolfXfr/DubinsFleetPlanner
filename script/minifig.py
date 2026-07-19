@@ -16,6 +16,7 @@ from scipy.optimize import direct,OptimizeResult
 
 def done(ax:Axes):
     ax.set_aspect('equal')
+    ax.legend()
     plt.show()
     exit(0)
     
@@ -48,30 +49,75 @@ fig,ax = plt.subplots()
 
 o = BasicPath(
     DubinsMove.STRAIGHT,
-    2000,
-    1050,
-    -1000,
+    367.05985398922257,
+    560570.02065107087,
+    6264387.7554701474,
     0,
-    0,1,0,0
+    -0.26811852988960672,
+    -0.96338593197629585,
+    0,0
 )
 
-plot_BasicPath_obstacle(ax,o)
-
-p1 = BasicPath(
+obis = BasicPath(
     DubinsMove.STRAIGHT,
-    932.9630739080485,
-    1079.5270249176237,
-    -44.852813742385734,
+    565.62581897748487,
+    560471.60510263778,
+    6264034.1351706209,
     0,
-    1,
-    0,
+    -0.97597002458732129,
+    0.21790482121105831,
     0,
     0
 )
-plot_BasicPath_obstacle(ax,p1)[0].set_color('b')
+
+obbis = BasicPath(
+    DubinsMove.STRAIGHT,
+    554.92984677851621,
+    560019.22711944743,
+    6264455.3840171332,
+    0,
+    0.9925462377288008,
+    -0.12186864227684893,
+    0,
+    0
+)
+
+obbbis = BasicPath(
+    DubinsMove.STRAIGHT,
+    367.05985398922257,
+    560570.02065107087,
+    6264387.7554701474,
+    0,
+    -0.26811852988960672,
+    -0.96338593197629585,
+    0,
+    0
+)
+
+plot_BasicPath_obstacle(ax,o)[0].set_label('Obstacle')
+
+x=560364.4804656991
+y=6264170.9087238098
+z=485.76514964827174
+v1=0.98469320833843232
+v2=0.1742965445789588
+v3=21.488464696746046
+v4=0
+m=DubinsMove.STRAIGHT
+length=1352.5650819678467
+
+p1 = BasicPath(
+    m,
+    length,
+    x,y,z,
+    v1,v2,v3,v4
+)
+p1_line = plot_BasicPath_obstacle(ax,p1)[0]
+p1_line.set_color('b')
+p1_line.set_label('Candidate')
 
 print(min_path_dist(p1,o))
-# print(min_straight_lstsq(p1,o))
+print(min_straight_lstsq(p1,o))
 
 done(ax)
 
