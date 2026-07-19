@@ -1,117 +1,181 @@
-# Dubins Synchronous Path planning program for fleets of fixed-wing aircraft
+# Dubins Fleet Planner usage
 
-## Usage
+## Command line
 
-`DubinsFleetPlanner data_file separation [wind_x] [wind_y] {-flags}`
+```bash
+DubinsFleetPlanner <input> <output> <separation> [wind-x] [wind-y] [options]
+```
 
-- `data_file` : A CSV file containing the base data for the problem. It's header (first line) must be:
-   `ac_id;start_x;start_y;start_z;start_theta;end_x;end_y;end_z;end_theta;airspeed;climb;turn_radius;dt`
+Positional arguments:
 
-   The fields describe respectively, for each aircraft:
-  * `ac_id`              : An integer identifying the aircraft
-  * `start_[xyz|(theta)]`: The starting position in XYZ space and XY orientation (theta, in radian) in the ground referential. Unit is up to the user and noted [l]
-  * `end_[xyz|(theta)]`  : The ending position in XYZ space and XY orientation (theta, in radian) in the ground referential. Unit is up to the user and noted [l]
-  * `airspeed`           : Positive, speed of the aircraft in the air referential, in [l]/[T], with [T] a user-defined time unit
-  * `climb`              : Positive, climb speed of the aircraft (and used symmetrically for descent).
-                             Altitude unit is up to user and noted [alt], such that climb is in [alt]/[T]
-  * `turn_radius`        : Positive, radius length of the tightest turn the aircraft is capable of. Unit is [l]
-  * `dt`                 : Time difference at arrival with respect to the previous aircraft (irrelevant for the first one). Unit is [T].
+- `input` (**required**): CSV case file, or a directory of CSV case files.
+- `output` (**required**): output file (single-case mode) or output directory (batch mode).
+- `separation` (**required**): minimum required XY separation between aircraft.
+- `wind-x` (optional, default `0`): wind speed along X.
+- `wind-y` (optional, default `0`): wind speed along Y.
 
-   An example of units may be [l]=meters, [alt]=meters, [T]=seconds ; or [l]=nautical miles, [alt]=feet, [T]=minutes.
+If `input` is a directory, the planner runs all regular files in that directory, writes one output file per case, and writes/updates `summary.csv` in the output directory. Existing case outputs are skipped unless `--recompute` is set.
 
-                  AS OF NOW, THE THIRD AXIS (Z) IS NOT IMPLEMENTED. THE VALUES SHOULD STILL BE FILLED IN, BUT ARE IRRELEVANT.
+## Options
 
-- `separation` : A positive value defining the minimum (Euclidean) distance that must be kept between two aircraft at all times. Unit is [l].
-                 (See flag `-Z` for how to handle different planar and vertical units.)
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `-A`, `--reallocate` | `false` | Allow aircraft to switch endpoints (delta-time solving mode). |
+| `-O`, `--obstacles <json>` | empty | JSON file with obstacle trajectories. |
+| `-G`, `--geo-obstacles <json>` | empty | JSON file with geometric (time-independent) obstacles. |
+| `--pathgen-config <json>` | empty | Per-aircraft path-generation overrides (see below). |
+| `--extend-start <vals...>` | unset | Start extension lengths for extended Dubins generation. |
+| `--extend-end <vals...>` | unset | End extension lengths for extended Dubins generation. |
+| `--straights-only` | `false` | With extensions, only allow straight extensions. |
+| `--allow-shortest` | `false` | Timeslot mode only: also allow shortest-path candidates. |
+| `-l`, `--line` | `false` | Add minimal-turn-radius paths with fitted start/end straights. |
+| `--line-ratios <vals...>` | auto | Ratios used by `--line`; defaults to `0 0.5 1` when `--line` is enabled. |
+| `--fixed-radius` | `false` | With `--line`, keep only minimal-radius Dubins paths (disable radius fitting). |
+| `-S`, `--samples <int>` | `0` | Path-generation sampling count (`0` disables sampling planner). |
+| `-e`, `--ellipse <float>` | `NaN` | Ellipse ratio used by sampling planner (`NaN` disables ellipse mode). |
+| `--ellipse-border-only` | `false` | In ellipse mode, sample only ellipse border points. |
+| `-t`, `--threads <int>` | `-1` | Number of threads (`0` = auto). |
+| `-p`, `--precision <float>` | `1e-3` | Numeric precision. |
+| `-r`, `--max-r-length <float>` | `3` | Maximal relative path length factor. |
+| `-I`, `--max-iters <int>` | `300` | Max solver iterations (must be `> 0`). |
+| `-w`, `--weave <int>` | `2` | Number of samples inserted when weaving/resampling. |
+| `--weave-dist <float>` | `0.1` | Minimum absolute time-gap to allow weaving between samples. |
+| `--weave-dist-percent <float>` | `0.0001` | Minimum relative time-gap (fraction of max duration) to allow weaving. |
+| `-T`, `--max-time <int>` | `60` | Maximum solver runtime in seconds. |
+| `-R`, `--recompute` | `false` | In batch mode, overwrite/redo already solved cases. |
+| `-v`, `--verbose <int>` | `1` | Verbosity level (`0` to `3`). |
+| `-E`, `--export-samples <int>` | `1000` | Number of samples for CSV export/display (must be `>= 3`). |
+| `--help` | - | Print help and exit. |
 
-                 AS OF NOW, THE THIRD AXIS (Z) IS NOT IMPLEMENTED. SEPARATION IS ONLY CONSIDERED AS IF ALL AIRCRAFT ARE ON THE SAME XY PLANE.
+Behavioral defaults:
 
-- `wind_x;wind_y`: Values describing the wind speed relative to the ground, respectively along the X and Y axes. If not set, default to 0.
-                   Unit is [l]/[T].
+- If only one of `--extend-start` / `--extend-end` is provided, the other is auto-filled with `[0]`.
+- If `--line` is set and `--line-ratios` is omitted, ratios default to `[0, 0.5, 1]`.
+- `--samples` must be non-negative.
 
-- `{-flags}`: List of options that may be set:
-  * `-Z [modifier]`: If set, enable considering the Z axis for separation. The optional argument `modifier` set the coefficient `a` in the
-                      distance computations such that `d = sqrt(Dx² + Dy² + (a Dz)²)`. This can be used to convert from [alt] to [l] and
-                      consider differently vertical distance from the horizontal one. If not set, default to 1.
+## Input CSV format
 
-                      AS OF NOW, THE THIRD AXIS (Z) IS NOT IMPLEMENTED. THIS FLAG HAS NO EFFECTS
+The parser expects the first 13 columns exactly as:
 
-  * `-c`: Disable collision detection
-  * `-v`: Verbose print to stdout
-  * `-s samples`: Defines a number of samples. Used for plotting and saving in sampled form. If the flag is not set, samples default to 1000.
-  * `--pathgen-config file`: Path to a JSON configuration file used to override individual path-generation options
-                             per aircraft, without changing the CSV input format.
-  * `-o file`: Store the resulting plan in the given file. Two formats are possible (chosen automatically from file extension):
-                  If it ends with `.csv`, stores the results by sampling each path (see flag `-s`), and put them in a CSV with samples+1 lines
-                  (data+header), the header being
-                  `time;[X_{ac_id};Y_{ac_id};Z_{ac_id};theta_{ac_id}]*{number of aircraft}`
+```text
+ac_id;start_x;start_y;start_z;start_theta;end_x;end_y;end_z;end_theta;airspeed;climb;turn_radius;dt
+```
 
-                  Otherwise, stores the results in JSON format as follow (two sub-objects are defined further down):
-                  {
-                     "separation": (Float Number: Minimal separation achieved),
-                     "z_alpha"   : (Float Number: Z distance modifier value),
-                     "wind_x"    : (Float Number: Wind speed along the X axis),
-                     "wind_y"    : (Float Number: Wind speed along the Y axis),
-                     "duration"  : (Float Number: time duration of the plan)
-                     "AC_num"    : (Int Number  : number of aircraft),
-                     "trajectories": [
-                        {
-                           "stats": Stats object,
-                           "path": Path object
-                        },...
-                     ]
-                  }
+These fields describe, for each aircraft:
 
-                  A 'trajectory' is the combination of both the Path, i.e. the geometry drawing; and the Stats which describe how the aircraft follows said geometry.
+- `ac_id`: integer aircraft id.
+- `start_[x,y,z,theta]`: start pose (`theta` in radians).
+- `end_[x,y,z,theta]`: end pose (`theta` in radians).
+- `airspeed`: positive speed in air reference frame.
+- `climb`: positive climb rate (used symmetrically for descent).
+- `turn_radius`: positive minimum turn radius.
+- `dt`: arrival-time difference from the previous aircraft (ignored for the first aircraft).
 
+Any extra columns are interpreted as per-aircraft timeslots. If at least one aircraft has timeslots, the solver uses timeslot mode; otherwise it uses delta-time mode from `dt`.
 
-                  A Pose3D object is defined as follow:
-                  {
-                     "x"    : (Float Number: X coordinate),
-                     "y"    : (Float Number: Y coordinate),
-                     "z"    : (Float Number: Z coordinate),
-                     "theta": (Float Number: XY orientation, in radian)
-                  }
+> Note: core conflict handling is currently XY-focused. Z values are parsed and propagated but are not treated as a full 3D separation model.
 
-                  A Stats object:
-                  {
-                     "id"         : (Int Number  : aircraft id),
-                     "airspeed"   : (Float Number: aircraft speed in air referential),
-                     "climb"      : (Float Number: aircraft climb rate),
-                     "turn_radius": (Float Number: aircraft minimal turn radius),
-                  }
+## Output format
 
-                  A Path object:
-                  {
-                     "total_length"  : (Float Number : total length of the path),
-                     "sections_count": (Int Number   : number of basic sections in this path),
-                     "start"         : (Pose3D object: starting pose),
-                     "end"           : (Pose3D object: ending pose),
-                     "sections": [
-                        BasicPath objects,...
-                     ]
-                  }
+Output format is selected from the output extension:
 
-                  A BasicPath object:
-                  {
-                     "length": (Float Number: Length of this section)
-                     "type"  : (String      : Either "LEFT","RIGHT" or "STRAIGHT", for describing a turn or a straight line movement)
-                     "m"     : (Int         : Either 0,1 or 2, the enum integer maching the type)
-                     "x"     : (Float Number: X coordinate of the refence point; For a Straight: Starting point | For a turn: Circle center)
-                     "y"     : (Float Number: Y coordinate of the refence point)
-                     "z"     : (Float Number: Z coordinate of the refence point)
-                     "p1"    : (Float Number: For a Straight: horizontal x speed | For a turn: Radius)
-                     "p2"    : (Float Number: For a Straight: horizontal y speed | For a turn: signed angular speed; positive when LEFT, negative when RIGHT)
-                     "p3"    : (Float Number: Vertical speed)
-                     "p4"    : (Float Number: For a Straight: unused | For a turn: initial angle)
-                  }
+- `.csv`: sampled trajectories (`--export-samples` controls sample count).
+- anything else (or no extension): JSON trajectory output.
+
+In batch mode, each case output name is derived from the input filename with extension:
+
+```text
+.sol<output_extension_or_.json_if_missing>
+```
+
+Example: if `output` path has extension `.csv`, each case is written as `*.sol.csv`.
+
+### CSV output
+
+If it ends with `.csv`, stores the results by sampling each path (see flag `-s`), and put them in a CSV with samples+1 lines
+(data+header), the header being: `time;[X_{ac_id};Y_{ac_id};Z_{ac_id};theta_{ac_id}]*{number of aircraft}`
+
+### JSON output
+
+Otherwise, stores the results in JSON format as follows (two sub-objects are defined further down):
+
+```json
+{
+   "separation": (Float Number: Minimal separation achieved),
+   "z_alpha"   : (Float Number: Z distance modifier value),
+   "wind_x"    : (Float Number: Wind speed along the X axis),
+   "wind_y"    : (Float Number: Wind speed along the Y axis),
+   "duration"  : (Float Number: time duration of the plan),
+   "AC_num"    : (Int Number  : number of aircraft),
+   "trajectories": [
+      {
+         "stats": Stats object,
+         "path": Path object
+      },...
+   ]
+}
+```
+
+A `trajectory` is the combination of both the `Path`, i.e. the geometry drawing; and the `Stats` which describe how the aircraft follows said geometry.
+
+A `Pose3D` object is defined as follows:
+
+```json  
+{
+   "x"    : (Float Number: X coordinate),
+   "y"    : (Float Number: Y coordinate),
+   "z"    : (Float Number: Z coordinate),
+   "theta": (Float Number: XY orientation, in radian)
+}
+
+A `Stats` object:
+
+```json
+{
+   "id"         : (Int Number  : aircraft id),
+   "airspeed"   : (Float Number: aircraft speed in air referential),
+   "climb"      : (Float Number: aircraft climb rate),
+   "turn_radius": (Float Number: aircraft minimal turn radius),
+}
+```
+
+A `Path` object:
+
+```json
+{
+   "total_length"  : (Float Number : total length of the path),
+   "sections_count": (Int Number   : number of basic sections in this path),
+   "start"         : (Pose3D object: starting pose),
+   "end"           : (Pose3D object: ending pose),
+   "sections": [
+      BasicPath objects,...
+   ]
+}
+```
+
+A `BasicPath` object:
+
+```json
+{
+   "length": (Float Number: Length of this section),
+   "type"  : (String      : Either "LEFT","RIGHT" or "STRAIGHT", for describing a turn or a straight line movement),
+   "m"     : (Int         : Either 0,1 or 2, the enum integer maching the type),
+   "x"     : (Float Number: X coordinate of the refence point; For a Straight: Starting point | For a turn: Circle center),
+   "y"     : (Float Number: Y coordinate of the refence point),
+   "z"     : (Float Number: Z coordinate of the refence point),
+   "p1"    : (Float Number: For a Straight: horizontal x speed | For a turn: Radius),
+   "p2"    : (Float Number: For a Straight: horizontal y speed | For a turn: signed angular speed; positive when LEFT, negative when RIGHT),
+   "p3"    : (Float Number: Vertical speed),
+   "p4"    : (Float Number: For a Straight: unused | For a turn: initial angle),
+}
+```
 
 ## Per-aircraft path generation configuration (`--pathgen-config`)
 
-The CSV format remains unchanged.  
-Per-aircraft values for path generation options are provided through an additional JSON file.
+The CSV format remains unchanged. Per-aircraft path-generation options can be overridden with a JSON file.
 
-Supported option keys in this JSON are:
+Supported keys:
+
 - `extend-start` (array of numbers)
 - `extend-end` (array of numbers)
 - `straights-only` (bool)
@@ -122,7 +186,7 @@ Supported option keys in this JSON are:
 - `ellipse` (number, or string `"NaN"` to disable ellipse)
 - `ellipse-border-only` (bool)
 
-JSON format:
+JSON schema example:
 
 ```json
 {
@@ -147,7 +211,8 @@ JSON format:
 }
 ```
 
-Merge order for each aircraft is:
-1. Command-line options
+Merge order per aircraft:
+
+1. command-line options
 2. `default` block overrides
-3. Matching `aircraft.<ac_id>` overrides
+3. matching `aircraft.<ac_id>` overrides
