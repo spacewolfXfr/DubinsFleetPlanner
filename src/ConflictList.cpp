@@ -91,7 +91,7 @@ std::vector<Dubins> find_pathplanning_LP_solution(
     model.setOptionValue("mip_abs_gap", 1-1e-5); // Since all variables in the objective are binary, it should stop when the absolute gap is below 1
     // model.setOptionValue('random_seed', SEED)
 
-    if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+    if (verbosity >= DubinsFleetPlanner_VERYVERY_VERBOSE)
     {
         model.setOptionValue("log_to_console",true);
     }

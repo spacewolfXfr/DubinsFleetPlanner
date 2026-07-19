@@ -495,7 +495,7 @@ protected:
                 threads,shared_list,stats,min_sep,
                 Conflict_Map_T(),true);
 
-            if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+            if (verbosity >= DubinsFleetPlanner_VERYVERY_VERBOSE)
             {
                 oprint::append_rich_conflicts(datalog,timetag,r_conflicts,shared_list,stats,!first_log);
                 first_log = false;

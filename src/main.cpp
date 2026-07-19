@@ -367,8 +367,8 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     
     bool good_solution = true;
 
-    string output_log_pathname = output_path.string() + ".log.json";
-    std::ofstream output_log(output_log_pathname);
+    // string output_log_pathname = output_path.string() + ".log.json";
+    // std::ofstream output_log(output_log_pathname);
 
     std::unique_ptr<PathsGenerator> shortest_path_gen = std::make_unique<BasePathsGenerator>(args.precision);
     std::unique_ptr<FittedPathsGenerator> path_gen;
@@ -417,8 +417,11 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
         }
     }
 
-    std::unique_ptr<FleetPlanner> planner = std::make_unique<FleetPlanner>(*shortest_path_gen,*path_gen,args.precision,args.max_r_length);
-
+    std::unique_ptr<FleetPlanner> planner = std::make_unique<FleetPlanner>(
+        *shortest_path_gen,*path_gen,
+        args.precision,args.max_r_length,
+        args.verbosity);
+    
     auto start = chrono::thread_clock::now(boost::throws());
     
     std::vector<Dubins> sols;
@@ -445,8 +448,6 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     }
 
     extra.duration = chrono::thread_clock::now(boost::throws()) - start;
-
-    output_log << "]";
     
     if (sols.size() != stats.size()) // If no solution, retry without separation
     {

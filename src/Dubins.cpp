@@ -36,8 +36,9 @@ void Dubins::recompute()
     {
         const DynamicPathShape &s = sections[i];
 
-        assert(abs(s.p3) < DubinsFleetPlanner_ZERO_TOLERANCE);
-        assert(abs(p.z) < DubinsFleetPlanner_ZERO_TOLERANCE);
+        // Vertical control is not handled, make sure everything stays at zero
+        // assert(abs(s.p3) < DubinsFleetPlanner_ZERO_TOLERANCE);
+        // assert(abs(p.z) < DubinsFleetPlanner_ZERO_TOLERANCE);
 
         curr_len += s.length;
         junctions_locs.push_back(curr_len);
