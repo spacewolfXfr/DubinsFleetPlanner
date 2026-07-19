@@ -25,6 +25,8 @@
 #include <memory>
 #include <vector>
 #include <tuple>
+#include <map>
+#include <optional>
 
 #include <nlohmann/json.hpp>
 
@@ -42,6 +44,25 @@ namespace DubinsPP
 {
     namespace InputParser
     {
+        struct PathGenerationOptionOverrides
+        {
+            std::optional<std::vector<double>> extend_start;
+            std::optional<std::vector<double>> extend_end;
+            std::optional<bool> straights_only;
+            std::optional<bool> line_fit;
+            std::optional<std::vector<double>> line_ratios;
+            std::optional<bool> fixed_radius;
+            std::optional<int> samples;
+            std::optional<double> ellipse_ratio;
+            std::optional<bool> ellipse_border_only;
+        };
+
+        struct PathGenerationConfig
+        {
+            PathGenerationOptionOverrides defaults;
+            std::map<int,PathGenerationOptionOverrides> per_aircraft;
+        };
+
         // Storage for case data has shown in a CSV line
         typedef struct 
         {
@@ -69,6 +90,27 @@ namespace DubinsPP
          * @return CaseData 
          */
         CaseData parse_data_csv(std::istream&);
+
+        /**
+         * @brief Parse per-aircraft path generation configuration from JSON
+         *
+         * Expected shape:
+         * {
+         *   "default": { ... option overrides ... },
+         *   "aircraft": {
+         *     "1": { ... option overrides ... },
+         *     "2": { ... option overrides ... }
+         *   }
+         * }
+         *
+         * Override keys are:
+         * - "extend-start", "extend-end" (array of numbers)
+         * - "straights-only", "line", "fixed-radius", "ellipse-border-only" (bool)
+         * - "line-ratios" (array of numbers)
+         * - "samples" (int)
+         * - "ellipse" (number, use NaN to disable)
+         */
+        PathGenerationConfig parse_path_generation_config_json(std::istream&);
 
         /**
          * @brief Parse from a stream a Dubins Path planning in a JSON format according to the specs given in `USAGE.md` 

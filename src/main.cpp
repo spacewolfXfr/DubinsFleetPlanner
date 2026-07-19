@@ -90,7 +90,181 @@ struct program_arguments
     int max_solver_time;
     bool recompute;
     string obstacle_pathname,geometric_obstacle_pathname;
+    string pathgen_config_pathname;
 };
+
+struct EffectivePathGenOptions
+{
+    vector<double> start_length_extensions;
+    vector<double> end_length_extensions;
+    bool straight_only = false;
+    bool line_fit = false;
+    vector<double> ratios;
+    bool fixed_radius = false;
+    int samples = 0;
+    double ellipse_ratio = NAN;
+    bool ellipse_border_only = false;
+};
+
+struct AircraftGenerators
+{
+    std::unique_ptr<PathsGenerator> shortest_path_gen;
+    std::unique_ptr<FittedPathsGenerator> path_gen;
+};
+
+static void normalize_pathgen_options(EffectivePathGenOptions& options)
+{
+    if (options.start_length_extensions.size() > 0 && options.end_length_extensions.size() == 0)
+    {
+        options.end_length_extensions = {0.};
+    }
+
+    if (options.end_length_extensions.size() > 0 && options.start_length_extensions.size() == 0)
+    {
+        options.start_length_extensions = {0.};
+    }
+
+    if (options.line_fit && options.ratios.size() == 0)
+    {
+        options.ratios = {0.,0.5,1.};
+    }
+}
+
+static EffectivePathGenOptions base_pathgen_options_from_args(const program_arguments& args)
+{
+    EffectivePathGenOptions options;
+    options.start_length_extensions = args.start_length_extensions;
+    options.end_length_extensions = args.end_length_extensions;
+    options.straight_only = args.straight_only;
+    options.line_fit = args.line_fit;
+    options.ratios = args.ratios;
+    options.fixed_radius = args.fixed_radius;
+    options.samples = args.samples;
+    options.ellipse_ratio = args.ellipse_ratio;
+    options.ellipse_border_only = args.ellipse_border_only;
+    normalize_pathgen_options(options);
+    return options;
+}
+
+static void apply_pathgen_overrides(EffectivePathGenOptions& options, const DubinsPP::InputParser::PathGenerationOptionOverrides& overrides)
+{
+    if (overrides.extend_start.has_value())
+    {
+        options.start_length_extensions = overrides.extend_start.value();
+    }
+    if (overrides.extend_end.has_value())
+    {
+        options.end_length_extensions = overrides.extend_end.value();
+    }
+    if (overrides.straights_only.has_value())
+    {
+        options.straight_only = overrides.straights_only.value();
+    }
+    if (overrides.line_fit.has_value())
+    {
+        options.line_fit = overrides.line_fit.value();
+    }
+    if (overrides.line_ratios.has_value())
+    {
+        options.ratios = overrides.line_ratios.value();
+    }
+    if (overrides.fixed_radius.has_value())
+    {
+        options.fixed_radius = overrides.fixed_radius.value();
+    }
+    if (overrides.samples.has_value())
+    {
+        options.samples = overrides.samples.value();
+    }
+    if (overrides.ellipse_ratio.has_value())
+    {
+        options.ellipse_ratio = overrides.ellipse_ratio.value();
+    }
+    if (overrides.ellipse_border_only.has_value())
+    {
+        options.ellipse_border_only = overrides.ellipse_border_only.value();
+    }
+    normalize_pathgen_options(options);
+}
+
+static AircraftGenerators build_generators_from_options(const EffectivePathGenOptions& options, double precision)
+{
+    AircraftGenerators output;
+
+    output.shortest_path_gen = std::make_unique<BasePathsGenerator>(precision);
+
+    if (options.line_fit)
+    {
+        auto fitted_line_extensions = std::make_unique<FittedStraightBaseDubins>(options.ratios,precision);
+
+        if (options.fixed_radius)
+        {
+            output.path_gen = std::move(fitted_line_extensions);
+        }
+        else
+        {
+            auto fitted_radius = std::make_unique<BaseFittedPathsGenerator>(precision);
+
+            std::vector<std::unique_ptr<FittedPathsGenerator>> tmp;
+            tmp.emplace_back(std::move(fitted_line_extensions));
+            tmp.emplace_back(std::move(fitted_radius));
+            output.path_gen = std::make_unique<AggregatedFittedPathsGenerator>(std::move(tmp));
+        }
+    }
+    else
+    {
+        auto fitted_line_extensions = std::make_unique<FittedStraightBaseDubins>(options.ratios,precision);
+        auto fitted_radius          = std::make_unique<BaseFittedPathsGenerator>(precision);
+
+        std::vector<std::unique_ptr<FittedPathsGenerator>> tmp;
+        tmp.emplace_back(std::move(fitted_line_extensions));
+        tmp.emplace_back(std::move(fitted_radius));
+
+        output.path_gen = std::make_unique<AggregatedFittedPathsGenerator>(std::move(tmp));
+    }
+
+    if (options.samples > 0)
+    {
+        if (!std::isnan(options.ellipse_ratio))
+        {
+            if (options.ellipse_border_only)
+            {
+                output.path_gen = std::make_unique<FittedEllipseSampling>(
+                    std::move(output.path_gen),options.ellipse_ratio,options.samples);
+            }
+            else
+            {
+                output.path_gen = std::make_unique<FittedRandomEllipseSampling>(
+                    std::move(output.path_gen),options.ellipse_ratio,options.samples,0);
+            }
+        }
+        else
+        {
+            output.path_gen = std::make_unique<FittedRandomEllipseSampling>(
+                std::move(output.path_gen),1.,options.samples,0);
+        }
+    }
+
+    if (options.start_length_extensions.size() || options.end_length_extensions.size())
+    {
+        if (options.straight_only)
+        {
+            output.path_gen = std::make_unique<StraightExtendedFittedPathsGenerator>(
+                std::move(output.path_gen),options.start_length_extensions,options.end_length_extensions);
+            output.shortest_path_gen = std::make_unique<StraightExtendedPathsGenerator>(
+                std::move(output.shortest_path_gen),options.start_length_extensions,options.end_length_extensions);
+        }
+        else
+        {
+            output.path_gen = std::make_unique<AllExtendedFittedPathsGenerator>(
+                std::move(output.path_gen),options.start_length_extensions,options.end_length_extensions);
+            output.shortest_path_gen = std::make_unique<AllExtendedPathsGenerator>(
+                std::move(output.shortest_path_gen),options.start_length_extensions,options.end_length_extensions);
+        }
+    }
+
+    return output;
+}
 
 
 bool process_command_line(int argc, char* argv[], program_arguments& parsed_args)
@@ -126,6 +300,8 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
                     , "Path to a JSON file describing multiple paths to be considered as obstacles")
     ("geo-obstacles,G"  , po::value<string>(&parsed_args.geometric_obstacle_pathname)->default_value("")
                     , "Path to a JSON file describing multiple paths to be considered as geometric obstacles, i.e. time-independant barriers.")
+    ("pathgen-config" , po::value<string>(&parsed_args.pathgen_config_pathname)->default_value("")
+                    , "Path to a JSON file overriding individual path generation options per aircraft.")
     
     ("extend-start ", po::value<vector<double>>(&parsed_args.start_length_extensions)->multitoken()
                     ,"Use extended Dubins curves with the given lengths, for the starts")
@@ -351,6 +527,30 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     dt          = std::get<3>(data);
     timeslots   = std::get<4>(data);
 
+    DubinsPP::InputParser::PathGenerationConfig pathgen_config;
+    if (!args.pathgen_config_pathname.empty())
+    {
+        std::ifstream cfg_src(args.pathgen_config_pathname);
+        if (cfg_src.bad())
+        {
+            std::cerr   << "Error while trying to open path generation config file (tried path: "
+                        << args.pathgen_config_pathname << " )" << std::endl
+                        << "Exiting now..." << std::endl;
+            return std::make_tuple(DubinsFleetPlanner_PARSING_FAILURE,std::vector<Dubins>{},extra);
+        }
+
+        try
+        {
+            pathgen_config = DubinsPP::InputParser::parse_path_generation_config_json(cfg_src);
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr   << "Error while parsing path generation config file: " << e.what() << std::endl
+                        << "Exiting now..." << std::endl;
+            return std::make_tuple(DubinsFleetPlanner_PARSING_FAILURE,std::vector<Dubins>{},extra);
+        }
+    }
+
     // Check if timeslots is empty:
 
     bool empty_timeslots = true;
@@ -370,57 +570,56 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     // string output_log_pathname = output_path.string() + ".log.json";
     // std::ofstream output_log(output_log_pathname);
 
-    std::unique_ptr<PathsGenerator> shortest_path_gen = std::make_unique<BasePathsGenerator>(args.precision);
-    std::unique_ptr<FittedPathsGenerator> path_gen;
+    EffectivePathGenOptions base_options = base_pathgen_options_from_args(args);
+    std::vector<AircraftGenerators> per_ac_generators;
+    per_ac_generators.reserve(stats.size());
 
-    if (args.line_fit)
+    for(const AircraftStats& ac_stat : stats)
     {
-        path_gen = std::make_unique<FittedStraightBaseDubins>(args.ratios,args.precision);
-    }
-    else
-    {
-        auto fitted_line_extensions = std::make_unique<FittedStraightBaseDubins>(args.ratios,args.precision);
-        auto fitted_radius          = std::make_unique<BaseFittedPathsGenerator>(args.precision);
+        EffectivePathGenOptions options = base_options;
 
-        std::vector<std::unique_ptr<FittedPathsGenerator>> tmp;
-        tmp.emplace_back(std::move(fitted_line_extensions));
-        tmp.emplace_back(std::move(fitted_radius));
+        apply_pathgen_overrides(options,pathgen_config.defaults);
 
-        AggregatedFittedPathsGenerator tmp_gen(std::move(tmp));
-
-        path_gen = std::make_unique<AggregatedFittedPathsGenerator>(std::move(tmp_gen));
-    }
-
-    if (args.samples > 0)
-    {
-        if (!std::isnan(args.ellipse_ratio))
+        auto ac_it = pathgen_config.per_aircraft.find(ac_stat.id);
+        if (ac_it != pathgen_config.per_aircraft.end())
         {
-            path_gen = std::make_unique<FittedEllipseSampling>(std::move(path_gen),args.ellipse_ratio,args.samples);
+            apply_pathgen_overrides(options,ac_it->second);
         }
-        else
+
+        if (options.samples < 0)
         {
-            path_gen = std::make_unique<FittedRandomEllipseSampling>(std::move(path_gen),1.,args.samples,0);
+            std::cerr << "Error: negative 'samples' value after pathgen config merge for aircraft id "
+                      << ac_stat.id << " (got " << options.samples << " )." << std::endl
+                      << "Exiting now..." << std::endl;
+            return std::make_tuple(DubinsFleetPlanner_PARSING_FAILURE,std::vector<Dubins>{},extra);
         }
+
+        per_ac_generators.push_back(build_generators_from_options(options,args.precision));
     }
 
-    if (args.start_length_extensions.size() || args.end_length_extensions.size())
+    if (per_ac_generators.size() == 0)
     {
-        if (args.straight_only)
-        {
-            path_gen = std::make_unique<StraightExtendedFittedPathsGenerator>(std::move(path_gen),args.start_length_extensions,args.end_length_extensions);
-            shortest_path_gen = std::make_unique<StraightExtendedPathsGenerator>(std::move(shortest_path_gen),args.start_length_extensions,args.end_length_extensions);
-        }
-        else
-        {
-            path_gen = std::make_unique<AllExtendedFittedPathsGenerator>(std::move(path_gen),args.start_length_extensions,args.end_length_extensions);
-            shortest_path_gen = std::make_unique<AllExtendedPathsGenerator>(std::move(shortest_path_gen),args.start_length_extensions,args.end_length_extensions);
-        }
+        std::cerr << "Error: no aircraft found in input case." << std::endl
+                  << "Exiting now..." << std::endl;
+        return std::make_tuple(DubinsFleetPlanner_PARSING_FAILURE,std::vector<Dubins>{},extra);
     }
 
     std::unique_ptr<FleetPlanner> planner = std::make_unique<FleetPlanner>(
-        *shortest_path_gen,*path_gen,
-        args.precision,args.max_r_length,
-        args.verbosity);
+        *per_ac_generators[0].shortest_path_gen,*per_ac_generators[0].path_gen,
+        args.precision,args.max_r_length,args.verbosity);
+
+    std::vector<std::reference_wrapper<const PathsGenerator>> shortest_refs;
+    std::vector<std::reference_wrapper<const FittedPathsGenerator>> fitted_refs;
+    shortest_refs.reserve(per_ac_generators.size());
+    fitted_refs.reserve(per_ac_generators.size());
+
+    for(const AircraftGenerators& ac_gen : per_ac_generators)
+    {
+        shortest_refs.push_back(*ac_gen.shortest_path_gen);
+        fitted_refs.push_back(*ac_gen.path_gen);
+    }
+
+    planner->set_aircraft_generators(shortest_refs,fitted_refs);
     
     auto start = chrono::thread_clock::now(boost::throws());
     

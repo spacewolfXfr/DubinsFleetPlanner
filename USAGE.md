@@ -39,6 +39,8 @@
   * `-c`: Disable collision detection
   * `-v`: Verbose print to stdout
   * `-s samples`: Defines a number of samples. Used for plotting and saving in sampled form. If the flag is not set, samples default to 1000.
+  * `--pathgen-config file`: Path to a JSON configuration file used to override individual path-generation options
+                             per aircraft, without changing the CSV input format.
   * `-o file`: Store the resulting plan in the given file. Two formats are possible (chosen automatically from file extension):
                   If it ends with `.csv`, stores the results by sampling each path (see flag `-s`), and put them in a CSV with samples+1 lines
                   (data+header), the header being
@@ -103,3 +105,49 @@
                      "p3"    : (Float Number: Vertical speed)
                      "p4"    : (Float Number: For a Straight: unused | For a turn: initial angle)
                   }
+
+## Per-aircraft path generation configuration (`--pathgen-config`)
+
+The CSV format remains unchanged.  
+Per-aircraft values for path generation options are provided through an additional JSON file.
+
+Supported option keys in this JSON are:
+- `extend-start` (array of numbers)
+- `extend-end` (array of numbers)
+- `straights-only` (bool)
+- `line` (bool)
+- `line-ratios` (array of numbers)
+- `fixed-radius` (bool)
+- `samples` (integer)
+- `ellipse` (number, or string `"NaN"` to disable ellipse)
+- `ellipse-border-only` (bool)
+
+JSON format:
+
+```json
+{
+  "default": {
+    "line": true,
+    "line-ratios": [0.0, 0.5, 1.0],
+    "samples": 20,
+    "ellipse": 0.95,
+    "ellipse-border-only": true
+  },
+  "aircraft": {
+    "1": {
+      "extend-start": [0.0, 50.0, 100.0],
+      "extend-end": [0.0, 40.0],
+      "straights-only": true
+    },
+    "3": {
+      "samples": 0,
+      "line": false
+    }
+  }
+}
+```
+
+Merge order for each aircraft is:
+1. Command-line options
+2. `default` block overrides
+3. Matching `aircraft.<ac_id>` overrides

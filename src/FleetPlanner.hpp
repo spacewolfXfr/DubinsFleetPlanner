@@ -21,6 +21,7 @@
 #include <tuple>
 #include <list>
 #include <set>
+#include <functional>
 
 #include <iostream>
 #include <memory>
@@ -221,11 +222,24 @@ protected:
     mutable bool first_log = true;      // When logging, state whether it is the first log or not
     FittedPathsGenerator& path_gen;
     PathsGenerator& shortest_path_gen;
+    std::vector<std::reference_wrapper<const FittedPathsGenerator>> path_gens_by_ac = {};
+    std::vector<std::reference_wrapper<const PathsGenerator>> shortest_path_gens_by_ac = {};
 
 public:
     FleetPlanner(PathsGenerator &_shortest_path_gen, FittedPathsGenerator &_path_gen, double _prec, double _max_r_dur, int verb = DubinsFleetPlanner_VERBOSE, std::ostream& output_stream = std::cout) : 
         shortest_path_gen(_shortest_path_gen), path_gen(_path_gen),
         precision_tol(_prec), maximal_relative_duration(_max_r_dur), verbosity(verb), datalog(output_stream) {}
+
+    void set_aircraft_generators(
+        const std::vector<std::reference_wrapper<const PathsGenerator>>& shortest_gens,
+        const std::vector<std::reference_wrapper<const FittedPathsGenerator>>& fitted_gens)
+    {
+#if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
+        assert(shortest_gens.size() == fitted_gens.size());
+#endif
+        shortest_path_gens_by_ac = shortest_gens;
+        path_gens_by_ac = fitted_gens;
+    }
 
     std::string my_name() const
     {
@@ -254,6 +268,17 @@ public:
         return path_gen.generate_paths(start,end,stats.climb,stats.turn_radius,target_len);
     }
 
+    std::vector<std::unique_ptr<Dubins>> generate_possible_paths(
+        uint ac_index,
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const
+    {
+        if (path_gens_by_ac.size() > ac_index)
+        {
+            return path_gens_by_ac[ac_index].get().generate_paths(start,end,stats.climb,stats.turn_radius,target_len);
+        }
+        return generate_possible_paths(start,end,stats,target_len);
+    }
+
     /**
      * @brief Maximum number of different paths returned by `generate_possible_paths` 
      * 
@@ -261,6 +286,15 @@ public:
      */
     uint max_path_num() const
     {
+        if (path_gens_by_ac.size() > 0)
+        {
+            uint output = 0;
+            for(const auto& gen_ref : path_gens_by_ac)
+            {
+                output = std::max(output,gen_ref.get().max_path_num());
+            }
+            return output;
+        }
         return path_gen.max_path_num();
     } 
 
@@ -278,6 +312,17 @@ public:
         const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double wind_x, double wind_y) const
     {
         return shortest_path_gen.generate_paths(start,end,stats.climb,stats.turn_radius);
+    }
+
+    std::vector<std::unique_ptr<Dubins>> generate_shortest_paths(
+        uint ac_index,
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double wind_x, double wind_y) const
+    {
+        if (shortest_path_gens_by_ac.size() > ac_index)
+        {
+            return shortest_path_gens_by_ac[ac_index].get().generate_paths(start,end,stats.climb,stats.turn_radius);
+        }
+        return generate_shortest_paths(start,end,stats,wind_x,wind_y);
     }
 
 
@@ -552,7 +597,7 @@ protected:
             double target_len = target_time*stats[i].airspeed;
 
             // List all possibilities for aircraft i
-            output[i] = generate_possible_paths(starts[i],base_end,stats[i],target_len);
+            output[i] = generate_possible_paths(i,starts[i],base_end,stats[i],target_len);
         }
 
         return output;
@@ -596,7 +641,7 @@ protected:
                 double target_len = target_time*stats[i].airspeed;
 
                 // Add possibilities to aircraft i
-                auto possibilities = generate_possible_paths(starts[i],base_end,stats[i],target_len);
+                auto possibilities = generate_possible_paths(i,starts[i],base_end,stats[i],target_len);
 
                 output[i].insert(output[i].end(),
                     std::make_move_iterator(possibilities.begin()),
@@ -644,7 +689,7 @@ protected:
                 double target_len = target_time*stats[i].airspeed;
 
                 // Add possibilities to aircraft i
-                auto possibilities = generate_possible_paths(starts[i],end,stats[i],target_len);
+                auto possibilities = generate_possible_paths(i,starts[i],end,stats[i],target_len);
 
                 output[i].insert(output[i].end(),
                     std::make_move_iterator(possibilities.begin()),
@@ -751,10 +796,10 @@ public:
         {
             if (threads > 1)
             {
-                uint max_p_num = max_path_num();
-                if (reallocate)
+                uint max_p_num = 0;
+                for(const auto& ac_possibilities : possibilities)
                 {
-                    max_p_num *= ends.size();
+                    max_p_num = std::max(max_p_num,static_cast<uint>(ac_possibilities.size()));
                 }
                 
                 sol = find_solution_parallel<separation_function,distance_function>(possibilities,stats,min_sep,max_p_num,threads,
@@ -1114,7 +1159,7 @@ public:
                 const Pose3D& start = starts[i];
                 const Pose3D& end   = ends[i];
 
-                auto shortests = generate_shortest_paths(start,end,stat,wind_x,wind_y);
+                auto shortests = generate_shortest_paths(i,start,end,stat,wind_x,wind_y);
                 paths.insert(
                     paths.end(),
                     std::move_iterator(shortests.begin()),
@@ -1135,8 +1180,14 @@ public:
         {
             if (threads > 1)
             {
+                uint max_p_num = 0;
+                for(const auto& ac_possibilities : possibilities)
+                {
+                    max_p_num = std::max(max_p_num,static_cast<uint>(ac_possibilities.size()));
+                }
+
                 sol = find_solution_parallel<separation_function,distance_function>(
-                    possibilities,stats,min_sep,max_timeslots*max_path_num(),threads,true,
+                    possibilities,stats,min_sep,max_p_num,threads,true,
                     verbosity >= DubinsFleetPlanner_VERY_VERBOSE);
             }
             else

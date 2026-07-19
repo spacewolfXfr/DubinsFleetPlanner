@@ -18,7 +18,9 @@
 import json,csv,dataclasses,pathlib,typing,copy
 import numpy as np
 
-from Dubins import Pose3D,ACStats,Path,BasicPath,FleetPlan,ListOfTimedPoses,TimedPosesLine,DictOfPoseTrajectories,DubinsMove,mod2pi,central_angle
+from Poses import Pose3D,ListOfTimedPoses,TimedPosesLine,DictOfPoseTrajectories
+from Aircraft import ACStats,ACOptions
+from Dubins import Path,BasicPath,FleetPlan,DubinsMove,mod2pi,central_angle
 
 
 ######################################## Dubins problem writing and parsing ########################################
@@ -142,6 +144,18 @@ def parse_pathplanning_problem_from_CSV(file:pathlib.Path) -> list[AC_PP_Problem
             output.append(AC_PP_Problem.parse_from_strlist(l))
             
     return output
+
+
+def parse_ACOptions_from_JSON(file:pathlib.Path) -> list[ACOptions]:
+    with open(file) as f:
+        data = json.load(f)
+    assert isinstance(data,list)
+    return [ACOptions.from_dict(d) for d in data]
+
+
+def write_ACOptions_to_JSON(file:pathlib.Path,data:typing.Sequence[ACOptions],overwrite:bool=False):
+    with open(file,mode='w' if overwrite else 'x') as jsonfile:
+        json.dump([e.asdict() for e in data],jsonfile,indent=2)
         
 
 ######################################## Dubins results parsing ########################################

@@ -25,7 +25,8 @@ from traffic.algorithms import filters
 
 
 from ProblemGenerator import AC_PP_Problem,ACStats,write_pathplanning_problem_to_CSV
-from Dubins import Path,BasicPath,FleetPlan,DubinsMove,Pose2D,Pose3D
+from Dubins import Path,BasicPath,FleetPlan,DubinsMove
+from Poses import Pose2D,Pose3D,min_XY_dist
 
 from pyproj import Transformer
 
@@ -33,7 +34,7 @@ from pyproj import Transformer
 from traffic_pb_generator import FlightEndpoints,LatlonPose,extract_flight_endpoints,flight_landing,NM_TO_METERS,get_other_runway_name,get_runway
 from ioUtils import print_FleetPlan_to_JSON,parse_trajectories_from_JSON
 
-from plotting import plot_pose2d_sequence,transpose_list_of_trajectories,min_XY_dist
+from plotting import plot_pose2d_sequence,transpose_list_of_trajectories
 
 #################### Utility ####################
 
@@ -504,7 +505,7 @@ class ArrivalsSimulator:
                  time_threshold:pd.Timedelta, reschedule_threshold:pd.Timedelta,
                  ac_num_threshold:int,
                  final_time:pd.Timedelta,
-                 threads:int) -> list[tuple[pd.Timestamp,list[tuple[ACStats,Pose3D]]]]:
+                 threads:int):
         # log = []
         
         while self.__t < self.__end_of_times:

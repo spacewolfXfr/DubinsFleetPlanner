@@ -16,6 +16,7 @@
 // along with DubinsFleetPlanner.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "ioUtils.hpp"
+#include <limits>
 
 using json = nlohmann::json;
 
@@ -286,6 +287,102 @@ CaseData DubinsPP::InputParser::parse_data_csv(std::istream& stream)
 
     return tranpose_data(parsed_rows);
 
+}
+
+static DubinsPP::InputParser::PathGenerationOptionOverrides parse_path_generation_option_overrides(const json& j)
+{
+    using DubinsPP::InputParser::PathGenerationOptionOverrides;
+
+    PathGenerationOptionOverrides out;
+
+    if (j.contains("extend-start"))
+    {
+        out.extend_start = j.at("extend-start").get<std::vector<double>>();
+    }
+    if (j.contains("extend-end"))
+    {
+        out.extend_end = j.at("extend-end").get<std::vector<double>>();
+    }
+    if (j.contains("straights-only"))
+    {
+        out.straights_only = j.at("straights-only").get<bool>();
+    }
+    if (j.contains("line"))
+    {
+        out.line_fit = j.at("line").get<bool>();
+    }
+    if (j.contains("line-ratios"))
+    {
+        out.line_ratios = j.at("line-ratios").get<std::vector<double>>();
+    }
+    if (j.contains("fixed-radius"))
+    {
+        out.fixed_radius = j.at("fixed-radius").get<bool>();
+    }
+    if (j.contains("samples"))
+    {
+        out.samples = j.at("samples").get<int>();
+    }
+    if (j.contains("ellipse"))
+    {
+        if (j.at("ellipse").is_string())
+        {
+            std::string s = j.at("ellipse").get<std::string>();
+            if (s == "NaN" || s == "nan" || s == "NAN")
+            {
+                out.ellipse_ratio = std::numeric_limits<double>::quiet_NaN();
+            }
+            else
+            {
+                throw std::invalid_argument("Invalid string value for 'ellipse' in pathgen config. Use a number or \"NaN\".");
+            }
+        }
+        else
+        {
+            out.ellipse_ratio = j.at("ellipse").get<double>();
+        }
+    }
+    if (j.contains("ellipse-border-only"))
+    {
+        out.ellipse_border_only = j.at("ellipse-border-only").get<bool>();
+    }
+
+    return out;
+}
+
+DubinsPP::InputParser::PathGenerationConfig DubinsPP::InputParser::parse_path_generation_config_json(std::istream& stream)
+{
+    PathGenerationConfig out;
+    json j;
+    stream >> j;
+
+    if (j.contains("default"))
+    {
+        out.defaults = parse_path_generation_option_overrides(j.at("default"));
+    }
+
+    if (j.contains("aircraft"))
+    {
+        const json& ac = j.at("aircraft");
+        if (!ac.is_object())
+        {
+            throw std::invalid_argument("Invalid pathgen config: 'aircraft' must be a JSON object keyed by aircraft id.");
+        }
+
+        for (auto it = ac.begin(); it != ac.end(); ++it)
+        {
+            int ac_id = 0;
+            auto conv = std::from_chars(it.key().data(), it.key().data() + it.key().size(), ac_id);
+            if (conv.ec != std::errc())
+            {
+                throw std::invalid_argument("Invalid aircraft id key in pathgen config: '" + it.key() + "'.");
+            }
+
+            out.per_aircraft[ac_id] = parse_path_generation_option_overrides(it.value());
+        }
+    }
+
+    return out;
 }
 
 // ---------- nlohmann Deserialization (JSON) ---------- //
@@ -566,7 +663,5 @@ void DubinsPP::OutputPrinter::print_paths_as_CSV(std::ostream& s,
         s << std::endl;
     }
 }
-
-
 
 
