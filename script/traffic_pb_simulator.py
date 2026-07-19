@@ -27,7 +27,7 @@ from traffic.algorithms import filters
 from ProblemGenerator import AC_PP_Problem,ACStats,write_pathplanning_problem_to_CSV
 from Dubins import Path,BasicPath,FleetPlan,DubinsMove,Pose2D,Pose3D
 
-from pyproj import Geod,Transformer
+from pyproj import Transformer
 
 
 from traffic_pb_generator import FlightEndpoints,LatlonPose,extract_flight_endpoints,flight_landing,NM_TO_METERS,get_other_runway_name,get_runway

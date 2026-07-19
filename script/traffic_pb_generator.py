@@ -25,11 +25,9 @@ from traffic.algorithms import filters
 from cartopy import crs as ccrs
 
 from ProblemGenerator import AC_PP_Problem,ACStats
-from Dubins import Path,BasicPath,FleetPlan,DubinsMove,Pose2D,Pose3D
+from Dubins import Pose3D
 
-from pyproj import Geod,Transformer
-
-geod = Geod(ellps="WGS84")
+from pyproj import Transformer
 
 lambert_fr_transformer = Transformer.from_crs(
     "EPSG:4326",   # WGS84 (lat, lon)
