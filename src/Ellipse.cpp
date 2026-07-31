@@ -38,8 +38,11 @@ std::optional<Ellipse> Ellipse::from_foci(double _fx, double _fy, double _fbx, d
     output._recompute_center_from_foci();
     output._recompute_c_from_foci();
 
-    if (output.c < output.a)
+    if (output.c > output.a)
+    {
         return std::nullopt;
+    }
+        
 
     output.b = std::sqrt(output.a*output.a - output.c*output.c);
     output.offset_angle = std::atan2(output.fy-output.fby,output.fx-output.fbx);

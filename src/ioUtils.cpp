@@ -325,22 +325,7 @@ static DubinsPP::InputParser::PathGenerationOptionOverrides parse_path_generatio
     }
     if (j.contains("ellipse"))
     {
-        if (j.at("ellipse").is_string())
-        {
-            std::string s = j.at("ellipse").get<std::string>();
-            if (s == "NaN" || s == "nan" || s == "NAN")
-            {
-                out.ellipse_ratio = std::numeric_limits<double>::quiet_NaN();
-            }
-            else
-            {
-                throw std::invalid_argument("Invalid string value for 'ellipse' in pathgen config. Use a number or \"NaN\".");
-            }
-        }
-        else
-        {
-            out.ellipse_ratio = j.at("ellipse").get<double>();
-        }
+        out.ellipse_ratios = j.at("ellipse").get<std::vector<double>>();
     }
     if (j.contains("ellipse-border-only"))
     {

@@ -14,11 +14,11 @@ class EllipseSampling : public PathsGenerator
 {
 public:
     std::unique_ptr<PathsGenerator> underlying;
-    double ellipse_ratio; // Ellipse 'radius' is equal to the distance separating start and end multiplied by this ratio (should be greater than 1)
+    std::vector<double> ellipse_ratios; // Ellipse 'radius' is equal to the distance separating start and end multiplied by this ratio (should be greater than 1)
     std::vector<double> samples_angles;
 
     EllipseSampling(std::unique_ptr<PathsGenerator> _under, double _ratio, uint _samples)
-    : underlying(std::move(_under)), ellipse_ratio(_ratio)
+    : underlying(std::move(_under)), ellipse_ratios({_ratio})
     {
         for(int i = 0; i < _samples; i++)
         {
@@ -27,7 +27,21 @@ public:
     }
 
     EllipseSampling(std::unique_ptr<PathsGenerator> _under, double _ratio, const std::vector<double> _samples)
-    : underlying(std::move(_under)), ellipse_ratio(_ratio), samples_angles(_samples) {}
+    : underlying(std::move(_under)), ellipse_ratios({_ratio}), samples_angles(_samples) {}
+
+
+    EllipseSampling(std::unique_ptr<PathsGenerator> _under, std::vector<double> _ratios, uint _samples)
+    : underlying(std::move(_under)), ellipse_ratios(_ratios)
+    {
+        for(int i = 0; i < _samples; i++)
+        {
+            samples_angles.push_back(i*2*M_PI/_samples);
+        }
+    }
+
+    EllipseSampling(std::unique_ptr<PathsGenerator> _under, std::vector<double> _ratios, const std::vector<double> _samples)
+    : underlying(std::move(_under)), ellipse_ratios(_ratios), samples_angles(_samples) {}
+
 
     std::string my_name() const override
     {
@@ -52,12 +66,16 @@ class RandomEllipseSampling : public PathsGenerator
 {
 public:
     std::unique_ptr<PathsGenerator> underlying;
-    double ellipse_ratio; // Ellipse 'radius' is equal to the distance separating start and end multiplied by this ratio (should be greater than 1)
+    std::vector<double> ellipse_ratios; // Ellipse 'radius' is equal to the distance separating start and end multiplied by this ratio (should be greater than 1)
     uint samples_num;
     mutable std::mt19937 rng;
 
     RandomEllipseSampling(std::unique_ptr<PathsGenerator> _under, double _ratio, uint _samples, int seed = 0)
-    : underlying(std::move(_under)), ellipse_ratio(_ratio), samples_num(_samples), rng(std::mt19937(seed)) {}
+    : underlying(std::move(_under)), ellipse_ratios({_ratio}), samples_num(_samples), rng(std::mt19937(seed)) {}
+
+    RandomEllipseSampling(std::unique_ptr<PathsGenerator> _under, std::vector<double> _ratios, uint _samples, int seed = 0)
+    : underlying(std::move(_under)), ellipse_ratios(_ratios), samples_num(_samples), rng(std::mt19937(seed)) {}
+
 
     std::string my_name() const override
     {
@@ -80,11 +98,11 @@ class FittedEllipseSampling : public FittedPathsGenerator
 {
 public:
     std::unique_ptr<FittedPathsGenerator> underlying;
-    double target_length_ratio; // Ellipse 'radius' is equal to the target length multiplied by this ratio. Should be smaller than 1 to give some leeway to path generation.
+    std::vector<double> target_length_ratios; // Ellipse 'radius' is equal to the target length multiplied by this ratio. Should be smaller than 1 to give some leeway to path generation.
     std::vector<double> samples_angles;
 
     FittedEllipseSampling(std::unique_ptr<FittedPathsGenerator> _under, double _ratio, uint _samples)
-    : underlying(std::move(_under)), target_length_ratio(_ratio)
+    : underlying(std::move(_under)), target_length_ratios({_ratio})
     {
         for(int i = 0; i < _samples; i++)
         {
@@ -93,7 +111,20 @@ public:
     }
 
     FittedEllipseSampling(std::unique_ptr<FittedPathsGenerator> _under, double _ratio, const std::vector<double> _samples)
-    : underlying(std::move(_under)), target_length_ratio(_ratio), samples_angles(_samples) {}
+    : underlying(std::move(_under)), target_length_ratios({_ratio}), samples_angles(_samples) {}
+
+
+    FittedEllipseSampling(std::unique_ptr<FittedPathsGenerator> _under, std::vector<double> _ratios, uint _samples)
+    : underlying(std::move(_under)), target_length_ratios(_ratios)
+    {
+        for(int i = 0; i < _samples; i++)
+        {
+            samples_angles.push_back(i*2*M_PI/_samples);
+        }
+    }
+
+    FittedEllipseSampling(std::unique_ptr<FittedPathsGenerator> _under, std::vector<double> _ratios, const std::vector<double> _samples)
+    : underlying(std::move(_under)), target_length_ratios(_ratios), samples_angles(_samples) {}
 
     std::string my_name() const override
     {
@@ -114,13 +145,16 @@ class FittedRandomEllipseSampling : public FittedPathsGenerator
 {
 public:
     std::unique_ptr<FittedPathsGenerator> underlying;
-    double target_length_ratio; // Ellipse 'radius' is equal to the target length multiplied by this ratio. Should be smaller than 1 to give some leeway to path generation.
+    std::vector<double> target_length_ratios; // Ellipse 'radius' is equal to the target length multiplied by this ratio. Should be smaller than 1 to give some leeway to path generation.
     uint samples_num;
     mutable std::mt19937 rng;
 
     FittedRandomEllipseSampling(std::unique_ptr<FittedPathsGenerator> _under, double _ratio, uint _samples, int seed=0)
-    : underlying(std::move(_under)), target_length_ratio(_ratio), samples_num(_samples), rng(std::mt19937(seed)) {}
+    : underlying(std::move(_under)), target_length_ratios({_ratio}), samples_num(_samples), rng(std::mt19937(seed)) {}
     
+    FittedRandomEllipseSampling(std::unique_ptr<FittedPathsGenerator> _under, std::vector<double> _ratios, uint _samples, int seed=0)
+    : underlying(std::move(_under)), target_length_ratios(_ratios), samples_num(_samples), rng(std::mt19937(seed)) {}
+
     std::string my_name() const override
     {
         return "FittedRandomEllipseSampling<"+underlying->my_name()+">";

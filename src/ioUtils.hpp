@@ -53,7 +53,7 @@ namespace DubinsPP
             std::optional<std::vector<double>> line_ratios;
             std::optional<bool> fixed_radius;
             std::optional<int> samples;
-            std::optional<double> ellipse_ratio;
+            std::optional<std::vector<double>> ellipse_ratios;
             std::optional<bool> ellipse_border_only;
         };
 

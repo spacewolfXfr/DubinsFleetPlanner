@@ -69,6 +69,7 @@ struct program_arguments
     string src_pathname;
     string out_pathname;
     double separation;
+    string wind_x_str,wind_y_str;
     double wind_x,wind_y;
     bool reallocate;
     bool allow_shortest;
@@ -77,14 +78,14 @@ struct program_arguments
     int max_iters,weave_iters;
     double min_weave_dist,min_weave_dist_percent;
     int samples;
-    double ellipse_ratio;
+    vector<double> ratios;
     bool ellipse_border_only;
     int export_samples;
     int verbosity;
     double precision;
     double max_r_length;
     bool line_fit;
-    vector<double> ratios;
+    vector<double> ellipse_ratios;
     bool fixed_radius;
     bool straight_only;
     int max_solver_time;
@@ -102,7 +103,7 @@ struct EffectivePathGenOptions
     vector<double> ratios;
     bool fixed_radius = false;
     int samples = 0;
-    double ellipse_ratio = NAN;
+    vector<double> ellipse_ratios;
     bool ellipse_border_only = false;
 };
 
@@ -130,6 +131,18 @@ static void normalize_pathgen_options(EffectivePathGenOptions& options)
     }
 }
 
+static string autoremove_quotes(const string& s)
+{
+    if (s.size() >= 2 && s.front() == '\'' && s.back() == '\'')
+    {
+        return s.substr(1,s.size()-2);
+    }
+    else
+    {
+        return s;
+    }
+}
+
 static EffectivePathGenOptions base_pathgen_options_from_args(const program_arguments& args)
 {
     EffectivePathGenOptions options;
@@ -140,7 +153,7 @@ static EffectivePathGenOptions base_pathgen_options_from_args(const program_argu
     options.ratios = args.ratios;
     options.fixed_radius = args.fixed_radius;
     options.samples = args.samples;
-    options.ellipse_ratio = args.ellipse_ratio;
+    options.ellipse_ratios = args.ellipse_ratios;
     options.ellipse_border_only = args.ellipse_border_only;
     normalize_pathgen_options(options);
     return options;
@@ -176,9 +189,9 @@ static void apply_pathgen_overrides(EffectivePathGenOptions& options, const Dubi
     {
         options.samples = overrides.samples.value();
     }
-    if (overrides.ellipse_ratio.has_value())
+    if (overrides.ellipse_ratios.has_value())
     {
-        options.ellipse_ratio = overrides.ellipse_ratio.value();
+        options.ellipse_ratios = overrides.ellipse_ratios.value();
     }
     if (overrides.ellipse_border_only.has_value())
     {
@@ -225,17 +238,17 @@ static AircraftGenerators build_generators_from_options(const EffectivePathGenOp
 
     if (options.samples > 0)
     {
-        if (!std::isnan(options.ellipse_ratio))
+        if (options.ellipse_ratios.size() > 0)
         {
             if (options.ellipse_border_only)
             {
                 output.path_gen = std::make_unique<FittedEllipseSampling>(
-                    std::move(output.path_gen),options.ellipse_ratio,options.samples);
+                    std::move(output.path_gen),options.ellipse_ratios,options.samples);
             }
             else
             {
                 output.path_gen = std::make_unique<FittedRandomEllipseSampling>(
-                    std::move(output.path_gen),options.ellipse_ratio,options.samples,0);
+                    std::move(output.path_gen),options.ellipse_ratios,options.samples,0);
             }
         }
         else
@@ -287,11 +300,11 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
     ("separation"   , po::value<double>(&parsed_args.separation)->required()
                     ,"REQUIRED, positional. Minimal required XY separation between aircraft")
     
-    ("wind-x"       , po::value<double>(&parsed_args.wind_x)->default_value(0.)
-                    ,"Positional. Wind speed along the X axis. Default to 0.")
+    ("wind-x"       , po::value<string>(&parsed_args.wind_x_str)->default_value("0.")
+                    ,"Positional. Wind speed along the X axis. Needs to be simple quoted, as in '-1.' (safeguard for negative values). Default to '0.'")
     
-    ("wind-y"       , po::value<double>(&parsed_args.wind_y)->default_value(0.)
-                    ,"Positional. Wind speed along the Y axis. Default to 0.")
+    ("wind-y"       , po::value<string>(&parsed_args.wind_y_str)->default_value("0.")
+                    ,"Positional. Wind speed along the Y axis. Needs to be simple quoted, as in '-1.' (safeguard for negative values). Default to '0.'")
 
     ("reallocate,A" , po::bool_switch(&parsed_args.reallocate)->default_value(false)
                     , "Flag. If set, allows aircraft to switch endpoints.")
@@ -323,8 +336,8 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
 
     ("samples,S"    , po::value<int>(&parsed_args.samples)->default_value(0)
                     ,"Number of samples used by the sampling planner. Default to 0 (i.e. don't use sampling).")
-    ("ellipse,e"    , po::value<double>(&parsed_args.ellipse_ratio)->default_value(NAN)
-                    ,"Use an ellipse and specifies of its radius should be as a ratio of target length. Default to NaN (i.e. don't use an ellipse).")
+    ("ellipse,e"    , po::value<vector<double>>(&parsed_args.ellipse_ratios)->multitoken()
+                    ,"Use ellipses and specifies their radii as ratios of target length. Default to empty (i.e. don't use an ellipse).")
     ("ellipse-border-only", po::bool_switch(&parsed_args.ellipse_border_only)->default_value(false)
                     ,"If true, only samples on the border of the ellipse are used. Default to false.")
 
@@ -414,6 +427,27 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
     {
         parsed_args.ratios = {0,0.5,1.};
     }
+
+    // Manually parse wind values, to allow negative values (boost program_options does not allow negative values for positional arguments)
+    try
+    {
+        parsed_args.wind_x = std::stod(autoremove_quotes(parsed_args.wind_x_str));
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Error while parsing wind-x value: " << e.what() << " with arguments: " << autoremove_quotes(parsed_args.wind_x_str) << std::endl;
+        return false;
+    }
+    try
+    {
+        parsed_args.wind_y = std::stod(autoremove_quotes(parsed_args.wind_y_str));
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "Error while parsing wind-y value: " << e.what() << " with arguments: " << autoremove_quotes(parsed_args.wind_y_str) << std::endl;
+        return false;
+    }
+
 
     return true;
 }
@@ -621,6 +655,11 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     planner->set_aircraft_generators(shortest_refs,fitted_refs);
     
+    if (args.verbosity >= DubinsFleetPlanner_VERBOSE)
+    {
+        std::cout << "Starting optimization..." << std::endl;
+    }
+
     auto start = chrono::thread_clock::now(boost::throws());
     
     std::vector<Dubins> sols;
@@ -648,33 +687,33 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     extra.duration = chrono::thread_clock::now(boost::throws()) - start;
     
-    if (sols.size() != stats.size()) // If no solution, retry without separation
-    {
-        ExtraPPResults _backup;
-        good_solution = false;
-        std::cerr << "WARNING: Could not find a solution; retrying with HALF SEPARATION ( " << args.separation/2 << " )" << std::endl;
+    // if (sols.size() != stats.size()) // If no solution, retry without separation
+    // {
+    //     ExtraPPResults _backup;
+    //     good_solution = false;
+    //     std::cerr << "WARNING: Could not find a solution; retrying with HALF SEPARATION ( " << args.separation/2 << " )" << std::endl;
         
-        if (!empty_timeslots)
-        {
-            planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,0,timeslots,
-                args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
-                obstacle_paths,obstacle_stats,geometric_obstacles
-                );
-        }
-        else
-        {
-            planner->solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,
-                args.separation/2,dt,
-                args.wind_x,args.wind_y,
-                args.reallocate,
-                args.max_iters,
-                args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
-                args.thread_num,
-                args.max_solver_time,
-                obstacle_paths,obstacle_stats,
-                geometric_obstacles);
-        }
-    }
+    //     if (!empty_timeslots)
+    //     {
+    //         planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,0,timeslots,
+    //             args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
+    //             obstacle_paths,obstacle_stats,geometric_obstacles
+    //             );
+    //     }
+    //     else
+    //     {
+    //         planner->solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,
+    //             args.separation/2,dt,
+    //             args.wind_x,args.wind_y,
+    //             args.reallocate,
+    //             args.max_iters,
+    //             args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
+    //             args.thread_num,
+    //             args.max_solver_time,
+    //             obstacle_paths,obstacle_stats,
+    //             geometric_obstacles);
+    //     }
+    // }
         
     if (sols.size() != stats.size())
     {
