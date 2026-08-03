@@ -415,7 +415,7 @@ double SRS_first_distance(double alpha, double beta, double d)
         return NAN;
     }
 
-    double cs = d * std::abs(std::sin(beta)/std::sin(da));
+    double cs = d *(std::sin(beta)/std::sin(da));
 
     double output = cs - std::tan(da/2);  
     return (output >= 0) ? output : NAN;
@@ -436,7 +436,7 @@ double SRS_last_distance(double alpha, double beta, double d)
         return NAN;
     }
     
-    double ec = d * std::abs(std::sin(alpha)/std::sin(da));
+    double ec = d *(std::sin(alpha)/std::sin(da));
 
     double output = ec - std::tan(da/2);
     return (output >= 0) ? output : NAN;
@@ -485,7 +485,7 @@ double SLS_first_distance(double alpha, double beta, double d)
         return NAN;
     }
     
-    double cs = d * std::abs(std::sin(beta)/std::sin(da));
+    double cs = d *(std::sin(beta)/std::sin(da));
 
     double output = cs - std::tan(da/2);
     return (output >= 0) ? output : NAN;
@@ -506,7 +506,7 @@ double SLS_last_distance(double alpha, double beta, double d)
         return NAN;
     }
     
-    double ec = d * std::abs(std::sin(alpha)/std::sin(da));
+    double ec = d *(std::sin(alpha)/std::sin(da));
 
     double output = ec - std::tan(da/2);
     return (output >= 0) ? output : NAN;
