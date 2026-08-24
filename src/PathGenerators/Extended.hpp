@@ -88,7 +88,7 @@ std::vector<std::unique_ptr<Dubins>> generate_extended_fitted_paths(
         for(double el : end_lens)
         {
             Pose3D shift_end = follow_dubins<endMove>(end,-el,1.,0., _turn_radius);
-            DynamicPathShape shape_end(beginMove, shift_end, end, 1., _turn_radius, 0.);
+            DynamicPathShape shape_end(endMove, shift_end, end, 1., _turn_radius, 0.);
 
             if (target_len - sl - el < 0.)
             {
