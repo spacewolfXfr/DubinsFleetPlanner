@@ -68,6 +68,7 @@ std::vector<DynamicPathShape> set_radius_LSL(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -120,6 +121,7 @@ std::vector<DynamicPathShape> set_radius_RSR(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -176,6 +178,7 @@ std::vector<DynamicPathShape> set_radius_RSL(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -232,6 +235,7 @@ std::vector<DynamicPathShape> set_radius_LSR(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -288,6 +292,7 @@ std::vector<DynamicPathShape> set_radius_RLR(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -344,6 +349,7 @@ std::vector<DynamicPathShape> set_radius_LRL(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -400,6 +406,7 @@ std::vector<DynamicPathShape> set_radius_SRS(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -456,6 +463,7 @@ std::vector<DynamicPathShape> set_radius_SLS(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -514,6 +522,7 @@ std::vector<DynamicPathShape> set_length_LSL(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -570,6 +579,7 @@ std::vector<DynamicPathShape> set_length_RSR(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -626,6 +636,7 @@ std::vector<DynamicPathShape> set_length_RSL(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -682,6 +693,7 @@ std::vector<DynamicPathShape> set_length_LSR(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -738,6 +750,7 @@ std::vector<DynamicPathShape> set_length_RLR(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -794,6 +807,7 @@ std::vector<DynamicPathShape> set_length_LRL(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -850,6 +864,7 @@ std::vector<DynamicPathShape> set_length_SRS(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }
@@ -906,6 +921,7 @@ std::vector<DynamicPathShape> set_length_SLS(const Pose3D &start, const Pose3D &
     }
     else
     {
+        assert(abs(length - (s1.length + s2.length + s3.length)) < tol);
         return output;
     }
 }

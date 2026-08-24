@@ -33,7 +33,7 @@ double generic_fit(F f, double min_val, double max_val, double tol=1e-6)
 
     std::uintmax_t inter_count = 1000;
 
-    auto tol_func = eps_tolerance<double>(-std::log2(tol));
+    auto tol_func = eps_tolerance<double>(-std::log2(tol)+1);
 
     double fa = f(min_val);
     double fb = f(max_val);
@@ -81,7 +81,7 @@ double generic_fit(F f, double min_val, double max_val, double tol=1e-6)
             output = o_mid;
         }
 
-        if (std::abs(f(output)) > DubinsFleetPlanner_PRECISION)
+        if (std::abs(f(output)) > tol)
         {
             output = NAN;
         }

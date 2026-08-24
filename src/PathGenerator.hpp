@@ -124,6 +124,13 @@ public:
         for(const auto& g: subgenerators)
         {
             std::vector<std::unique_ptr<Dubins>> tmp = g->generate_paths(start,end,climb,turn_radius,target_len);
+            for(const auto& el : tmp)
+            {
+                if (el->is_valid())
+                {
+                    assert(abs(el->get_length() - target_len) < 1e-1);
+                }
+            }
             output.insert(output.end(),std::move_iterator(tmp.begin()),std::move_iterator(tmp.end()));
         }
         return output;
