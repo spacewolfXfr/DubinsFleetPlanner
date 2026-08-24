@@ -410,7 +410,7 @@ double SRS_first_distance(double alpha, double beta, double d)
     // We don't care about the special case where alpha=beta=0 because then the solution
     // is a straight line, which will overlap with RSR
     double da = central_angle(alpha-beta);
-    if (std::abs(da) - M_PI == 0)
+    if (std::abs(std::abs(da) - M_PI) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
         return NAN;
     }
@@ -431,12 +431,12 @@ double SRS_middle_distance(double alpha, double beta, double d)
 double SRS_last_distance(double alpha, double beta, double d)
 {
     double da = central_angle(alpha-beta);
-    if (std::abs(da) - M_PI == 0)
+    if (std::abs(std::abs(da) - M_PI) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
         return NAN;
     }
     
-    double ec = d *(std::sin(alpha)/std::sin(da));
+    double ec = -d *(std::sin(alpha)/std::sin(da));
 
     double output = ec - std::tan(da/2);
     return (output >= 0) ? output : NAN;
@@ -447,7 +447,7 @@ std::pair<double,double> SRS_possible_d(double alpha, double beta)
 {
     double da = central_angle(alpha-beta);
     // Case with nothing possible
-    if (std::abs(da) - M_PI == 0)
+    if (std::abs(std::abs(da) - M_PI) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
         return std::pair(INFINITY,-INFINITY);
     }
@@ -480,7 +480,7 @@ double SRS_total_distance(double alpha, double beta, double d)
 double SLS_first_distance(double alpha, double beta, double d)
 {
     double da = central_angle(beta-alpha);
-    if (std::abs(da) - M_PI == 0)
+    if (std::abs(std::abs(da) - M_PI) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
         return NAN;
     }
@@ -501,12 +501,12 @@ double SLS_middle_distance(double alpha, double beta, double d)
 double SLS_last_distance(double alpha, double beta, double d)
 {
     double da = central_angle(beta-alpha);
-    if (std::abs(da) - M_PI == 0)
+    if (std::abs(std::abs(da) - M_PI) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
         return NAN;
     }
     
-    double ec = d *(std::sin(alpha)/std::sin(da));
+    double ec = -d *(std::sin(alpha)/std::sin(da));
 
     double output = ec - std::tan(da/2);
     return (output >= 0) ? output : NAN;
@@ -517,7 +517,7 @@ std::pair<double,double> SLS_possible_d(double alpha, double beta)
 {
     double da = central_angle(alpha-beta);
     // Case with nothing possible
-    if (std::abs(da) - M_PI == 0)
+    if (std::abs(std::abs(da) - M_PI) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
         return std::pair(INFINITY,-INFINITY);
     }

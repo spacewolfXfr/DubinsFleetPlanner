@@ -166,10 +166,13 @@ void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<Ai
  * DOES NOT CONSIDER VERTICALITY.
  * 
  * @param all_paths Candidate paths to be filtered
+ * @param stats Aircraft stats associated to candidate paths
  * @param obstacles Obstacle elements
  * @param min_sep   Minimal separation desired (non-negative)
+ * @param wind_x    X-component of the wind vector
+ * @param wind_y    Y-component of the wind vector
  */
-void filter_2D_geometric_colliding_paths(ListOfPossibilities& all_paths, const std::vector<DynamicPathShape>& obstacles, double min_sep);
+void filter_2D_geometric_colliding_paths(ListOfPossibilities& all_paths, const std::vector<AircraftStats>& stats, const std::vector<DynamicPathShape>& obstacles, double min_sep, double wind_x = 0., double wind_y = 0.);
 
 // ---------- Smart sampling ---------- //
 
@@ -598,6 +601,13 @@ protected:
 
             // List all possibilities for aircraft i
             output[i] = generate_possible_paths(i,starts[i],base_end,stats[i],target_len);
+            for(const auto& el : output[i])
+            {
+                if (el->is_valid())
+                {
+                    assert(abs(el->get_duration(stats[i].airspeed) - target_time) < DubinsFleetPlanner_PRECISION);
+                }
+            }
         }
 
         return output;
@@ -784,15 +794,45 @@ public:
             possibilities = list_all_possibilities(starts,ends,stats,times,wind_x,wind_y);
         }
 
+        if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+        {
+            std::cout << "Before dynamic obstacles filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
+            for(const auto& ac_possibilities : possibilities)
+            {
+                std::cout << ac_possibilities.size() << ", ";
+            }
+            std::cout << std::endl;
+        }
+
         filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,min_sep);
 
-        filter_2D_geometric_colliding_paths(possibilities,geometric_obstacles,precision_tol);
+        if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+        {
+            std::cout << "After dynamic obstacles filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
+            for(const auto& ac_possibilities : possibilities)
+            {
+                std::cout << ac_possibilities.size() << ", ";
+            }
+            std::cout << std::endl;
+        }
 
-        std::set<uint> nopaths_acs = acs_without_paths(possibilities);
+        filter_2D_geometric_colliding_paths(possibilities,stats,geometric_obstacles,precision_tol,wind_x,wind_y);
+
+        if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+        {
+            std::cout << "After 2D geometric filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
+            for(const auto& ac_possibilities : possibilities)
+            {
+                std::cout << ac_possibilities.size() << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        std::set<uint> nopaths_acs_indexes = acs_without_paths(possibilities);
 
         std::vector<Dubins> sol = {};
 
-        if (nopaths_acs.size() == 0)
+        if (nopaths_acs_indexes.size() == 0)
         {
             if (threads > 1)
             {
@@ -816,10 +856,10 @@ public:
         {
             if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
             {
-                std::cout   << "AC numbers : ";
-                for(uint id : nopaths_acs)
+                std::cout   << "AC ids : ";
+                for(uint i : nopaths_acs_indexes)
                 {
-                    std::cout << id << ", ";
+                    std::cout << stats[i].id << ", ";
                 } 
                 std::cout << " have no path available..." << std::endl;
             }
@@ -831,7 +871,7 @@ public:
         extra.duration = end - start;
 
         res = sol;
-        return nopaths_acs;
+        return nopaths_acs_indexes;
     }
 
     /**
@@ -1168,15 +1208,35 @@ public:
             }
         }
 
+        if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+        {
+            std::cout << "Before dynamic obstacles filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
+            for(const auto& ac_possibilities : possibilities)
+            {
+                std::cout << ac_possibilities.size() << ", ";
+            }
+            std::cout << std::endl;
+        }
+
         filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,min_sep);
 
-        filter_2D_geometric_colliding_paths(possibilities,geometric_obstacles,precision_tol);
+        filter_2D_geometric_colliding_paths(possibilities,stats,geometric_obstacles,precision_tol,wind_x,wind_y);
 
-        std::set<uint> nopaths_acs = acs_without_paths(possibilities);
+        if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+        {
+            std::cout << "After filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
+            for(const auto& ac_possibilities : possibilities)
+            {
+                std::cout << ac_possibilities.size() << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        std::set<uint> nopaths_acs_indexes = acs_without_paths(possibilities);
 
         std::vector<Dubins> sol = {};
 
-        if (nopaths_acs.size() == 0)
+        if (nopaths_acs_indexes.size() == 0)
         {
             if (threads > 1)
             {
@@ -1197,12 +1257,12 @@ public:
         } 
         else
         {
-            if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+            if (verbosity >= DubinsFleetPlanner_VERBOSE)
             {
-                std::cout   << "AC numbers : ";
-                for(uint id : nopaths_acs)
+                std::cout   << "AC ids : ";
+                for(uint i : nopaths_acs_indexes)
                 {
-                    std::cout << id << ", ";
+                    std::cout << stats[i].id << ", ";
                 } 
                 std::cout << " have no path available..." << std::endl;
             }
@@ -1232,7 +1292,7 @@ public:
         }
 
         res = sol;
-        return nopaths_acs;
+        return nopaths_acs_indexes;
     }
     
 };

@@ -374,6 +374,19 @@ public:
     {
         return turning_angle(duration());
     }
+
+    std::vector<std::tuple<double,Pose3D>> get_sampled_poses(double dt, double duration) const
+    {
+        std::vector<std::tuple<double,Pose3D>> output;
+        double now = 0.;
+        while (now < duration)
+        {
+            output.push_back(std::make_tuple(now, follow(now)));
+            now += dt;
+        }
+        output.push_back(std::make_tuple(duration, follow(duration)));
+        return output;
+    }
 };
 
 template<DubinsMove m>
