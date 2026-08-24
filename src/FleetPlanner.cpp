@@ -211,30 +211,75 @@ std::set<uint> acs_without_paths(const ListOfPossibilities& all_paths)
 }
 
 
-void filter_2D_geometric_colliding_paths(ListOfPossibilities& all_paths, const std::vector<DynamicPathShape>& obstacles, double min_sep)
+void filter_2D_geometric_colliding_paths(ListOfPossibilities& all_paths, const std::vector<AircraftStats>& stats, const std::vector<DynamicPathShape>& obstacles, double min_sep, double wind_x, double wind_y)
 {
+    assert(all_paths.size() == stats.size());
+
     for(uint i = 0; i < all_paths.size(); i++)
     {
         std::vector<std::unique_ptr<Dubins>>& path_list = all_paths[i];
         std::vector<std::unique_ptr<Dubins>> filtered_paths;
+        AircraftStats stat = stats[i];
         
         for(std::unique_ptr<Dubins>& p_ptr : path_list)
         {
             bool conflict_free = true;
+            double now = 0.;
 
             for(uint j = 0; j < obstacles.size(); j++)
             {
-                const Dubins& p = *p_ptr;
                 const DynamicPathShape& c = obstacles[j];
                  
-                for(const DynamicPathShape& s : p.get_all_sections())
+                for(const DynamicPathShape& s : p_ptr->get_all_sections())
                 {
-                    std::tuple<double,double,double> res = geometric_XY_dist(s,c,s.duration(),c.duration());
-                    if (std::get<0>(res) <= min_sep)
+                    double end = now + s.length/stat.airspeed;
+
+                    // If there is wind, we need to compute the distance with the wind taken into account
+                    if (wind_x*wind_x + wind_y*wind_y > DubinsFleetPlanner_ZERO_TOLERANCE)
                     {
-                        conflict_free = false;
-                        break;
+                        if (s.m == STRAIGHT)
+                        {
+                            DynamicPathShape s_wind = s;
+                            s_wind.x += wind_x*now;
+                            s_wind.y += wind_y*now;
+                            s_wind.p1 += wind_x;
+                            s_wind.p2 += wind_y;
+                            std::tuple<double,double,double> res = geometric_XY_dist(s_wind,c,s_wind.duration(),c.duration());
+                            if (std::get<0>(res) <= min_sep)
+                            {
+                                conflict_free = false;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            auto timed_poses = s.get_sampled_poses(min_sep/(2*stat.airspeed),s.length/stat.airspeed);
+                            for(const auto& [t,p] : timed_poses)
+                            {
+                                Pose3D p_wind = p;
+                                p_wind.x += wind_x*(t+now);
+                                p_wind.y += wind_y*(t+now);
+                                std::tuple<double,double> res_point = geometric_XY_point_dist(c,p,c.duration());
+                                if (std::get<0>(res_point) <= min_sep)
+                                {
+                                    conflict_free = false;
+                                    break;
+                                }
+                            }
+                        }
                     }
+                    else
+                    {
+                        std::tuple<double,double,double> res = geometric_XY_dist(s,c,s.duration(),c.duration());
+                        if (std::get<0>(res) <= min_sep)
+                        {
+                            conflict_free = false;
+                            break;
+                        }
+                    }
+                    
+
+                    now = end;
                 }
 
                 if (!conflict_free) break;

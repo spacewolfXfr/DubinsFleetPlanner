@@ -874,6 +874,13 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
     }
 }
 
+std::tuple<double,double> geometric_XY_point_dist(const DynamicPathShape& s, const Pose3D& p, double d)
+{
+    DynamicPathShape p_shape(STRAIGHT, p, 0, 1., 1., 0.);
+    std::tuple<double,double,double> dist_tuple = geometric_XY_dist(s, p_shape, d, 0.);
+    return std::make_tuple(std::get<0>(dist_tuple), std::get<1>(dist_tuple));
+}
+
 // ----- Z distances ----- //
 
 template<DubinsMove m1, DubinsMove m2> [[gnu::pure]]

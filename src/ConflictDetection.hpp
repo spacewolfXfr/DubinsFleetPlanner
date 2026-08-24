@@ -70,7 +70,7 @@ std::tuple<double,double,double> geometric_XY_dist(const PathShape<m1>& s1, cons
  * 
  * @param s1,s2 Shapes
  * @param d1,d2 Durations (in s) for which the shapes are followed, defining segment and circle arcs
- * @return double The minimal XY separation distance, with its location parameter with respect to the first and second paths
+ * @return std::tuple<double,double,double> The minimal XY separation distance, with its location parameter with respect to the first and second paths
  */
 std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2, double d1, double d2);
 
@@ -81,6 +81,16 @@ inline std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape
 {
     return geometric_XY_dist(s1,s2,duration,duration);
 }
+
+/**
+ * @brief Compute the XY geometric distance between a path and a point
+ * 
+ * @param s Obstacle path
+ * @param p Point (ignore vertical and orientation components)
+ * @param d Duration (in s) for which the path is followed
+ * @return std::tuple<double,double> The minimal XY separation distance, with its location parameter with respect to the path 
+ */
+std::tuple<double,double> geometric_XY_point_dist(const DynamicPathShape& s, const Pose3D& p, double d);
 
 /**
  * @brief Given two shapes described by paths, compute their XY geometric separation by sampling
