@@ -59,6 +59,10 @@ results/**
 *.csv
 *.json
 
+# Useful shortcuts for me
+DFP_Ui
+
+
 ##### Editors #####
 # VSCode
 .vscode/**
