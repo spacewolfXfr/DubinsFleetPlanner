@@ -133,7 +133,7 @@ static void normalize_pathgen_options(EffectivePathGenOptions& options)
 
 static string autoremove_quotes(const string& s)
 {
-    if (s.size() >= 2 && s.front() == '\'' && s.back() == '\'')
+    if (s.size() >= 2 && (s.front() == '\'' || s.front() == '(') && (s.back() == '\'' || s.back() == ')'))
     {
         return s.substr(1,s.size()-2);
     }
