@@ -876,9 +876,65 @@ std::tuple<double,double,double> geometric_XY_dist(const DynamicPathShape& s1, c
 
 std::tuple<double,double> geometric_XY_point_dist(const DynamicPathShape& s, const Pose3D& p, double d)
 {
-    DynamicPathShape p_shape(STRAIGHT, p, 0, 1., 1., 0.);
-    std::tuple<double,double,double> dist_tuple = geometric_XY_dist(s, p_shape, d, 0.);
-    return std::make_tuple(std::get<0>(dist_tuple), std::get<1>(dist_tuple));
+    if (s.m == STRAIGHT)
+    {
+        Pose3D s_start = s.initial_pose();
+        Pose3D s_end   = s.follow(d);
+
+        Eigen::Vector2d p1(s_start.x,s_start.y);
+        Eigen::Vector2d p2(s_end.x,s_end.y);
+        Eigen::Vector2d v = p2-p1;
+        double v_n2 = v.squaredNorm();
+
+        Eigen::Vector2d p3(p.x,p.y);
+
+        double t = (p3-p1).dot(v)/v_n2;
+        if (t < 0.)
+        {
+            return std::make_tuple(0.,(p3-p1).norm());
+        }
+        else if (t > d)
+        {
+            return std::make_tuple(d,(p3-p2).norm());
+        }
+        else
+        {
+            Eigen::Vector2d proj = p1 + t*v;
+            return std::make_tuple(t,(p3-proj).norm());
+        }
+    }
+    else
+    {
+        double r     = s.p1;
+        double omega = s.p2;
+        double phi   = s.p4;
+
+        Eigen::Vector2d c(s.x,s.y);
+        Eigen::Vector2d p3(p.x,p.y);
+
+        Eigen::Vector2d dC = p3 - c;
+        
+        double phi_p = std::atan2(dC.y(),dC.x());
+        
+        double phi_norm = put_in_arc(phi,phi+omega*d,phi_p);
+
+        if (!std::isnan(phi_norm))
+        {
+            return std::make_tuple((phi_norm-phi)/omega,std::abs(r-dC.norm()));
+        }
+        
+        // If the projection is not in the arc, we take the closest endpoint
+        Eigen::Vector2d p_s = c + r*angle_vector(phi);
+        Eigen::Vector2d p_e = c + r*angle_vector(phi+omega*d);
+
+        double d_s = (p3-p_s).norm();
+        double d_e = (p3-p_e).norm();
+
+        if (d_s < d_e)
+            return std::make_tuple(0.,d_s);
+        
+        return std::make_tuple(d,d_e);
+    }
 }
 
 // ----- Z distances ----- //

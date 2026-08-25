@@ -816,19 +816,24 @@ public:
             std::cout << std::endl;
         }
 
-        filter_2D_geometric_colliding_paths(possibilities,stats,geometric_obstacles,precision_tol,wind_x,wind_y);
-
-        if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
-        {
-            std::cout << "After 2D geometric filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
-            for(const auto& ac_possibilities : possibilities)
-            {
-                std::cout << ac_possibilities.size() << ", ";
-            }
-            std::cout << std::endl;
-        }
-
         std::set<uint> nopaths_acs_indexes = acs_without_paths(possibilities);
+
+        if (nopaths_acs_indexes.size() == 0)
+        {
+            filter_2D_geometric_colliding_paths(possibilities,stats,geometric_obstacles,precision_tol,wind_x,wind_y);
+
+            if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
+            {
+                std::cout << "After 2D geometric filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
+                for(const auto& ac_possibilities : possibilities)
+                {
+                    std::cout << ac_possibilities.size() << ", ";
+                }
+                std::cout << std::endl;
+            }
+
+            nopaths_acs_indexes = acs_without_paths(possibilities);
+        }
 
         std::vector<Dubins> sol = {};
 
