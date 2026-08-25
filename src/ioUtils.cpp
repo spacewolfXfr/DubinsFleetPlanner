@@ -586,6 +586,25 @@ void DubinsPP::OutputPrinter::print_paths_as_ModernJSON(std::ostream& s,
     s << j;
 }
 
+// ---------- Obstacles Serialization (JSON) ---------- //
+
+void DubinsPP::OutputPrinter::print_obstacles_collection(std::ostream& s, const std::vector<DynamicPathShape>& obstacles)
+{
+    using json = nlohmann::json;
+    json j;
+
+    std::vector<json> j_obstacles;
+    for(const DynamicPathShape& obs : obstacles)
+    {
+        json j_obs;
+        to_json(j_obs,obs);
+        j_obstacles.push_back(j_obs);
+    }
+
+    j["sections"] = j_obstacles;
+    s << j;
+}
+
 // ---------- Handmade Serialization (CSV) ---------- //
 
 void DubinsPP::OutputPrinter::print_paths_as_CSV(std::ostream& s, 

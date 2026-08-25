@@ -180,6 +180,14 @@ namespace DubinsPP
             double wind_x, double wind_y, uint samples);
 
         /**
+         * @brief Print to a stream a collection of geometric obstacles in a JSON format according to the specs given in `USAGE.md`
+         * 
+         * @param s         Output stream
+         * @param obstacles Obstacle collection to print
+         */
+        void print_obstacles_collection(std::ostream& s, const std::vector<DynamicPathShape>& obstacles);
+
+        /**
          * @brief Format conflicts in JSON and add them to the stream
          * 
          * @param os                Output stream
