@@ -375,6 +375,22 @@ public:
         return turning_angle(duration());
     }
 
+    std::vector<std::tuple<double,Pose3D>> get_sampled_poses(double dl) const
+    {
+        std::vector<std::tuple<double,Pose3D>> output;
+        double now = 0.;
+        double l = 0.;
+        double dt = dl/planar_speed();
+        while (now < duration())
+        {
+            output.push_back(std::make_tuple(l, follow(now)));
+            now += dt;
+            l += dl;
+        }
+        output.push_back(std::make_tuple(length, follow(duration())));
+        return output;
+    }
+
     std::vector<std::tuple<double,Pose3D>> get_sampled_poses(double dt, double duration) const
     {
         std::vector<std::tuple<double,Pose3D>> output;
