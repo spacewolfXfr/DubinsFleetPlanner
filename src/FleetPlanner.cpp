@@ -207,7 +207,7 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
 {
     assert(all_paths.size() == stats.size());
 
-    // std::vector<DynamicPathShape> arcs_as_obstacles;
+    // std::vector<DynamicPathShape> path_as_obstacles;
 
     for (uint i = 0; i < all_paths.size(); i++)
     {
@@ -232,8 +232,10 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
                         DynamicPathShape s_wind = s;
                         s_wind.x += wind_x * now;
                         s_wind.y += wind_y * now;
-                        s_wind.p1 += wind_x;
-                        s_wind.p2 += wind_y;
+                        s_wind.p1 += wind_x/(stat.airspeed/s.planar_speed());
+                        s_wind.p2 += wind_y/(stat.airspeed/s.planar_speed());
+
+                        // if (stat.id == 60) path_as_obstacles.push_back(s_wind);
 
                         for (uint j = 0; j < obstacles.size(); j++)
                         {
@@ -268,7 +270,7 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
                             DynamicPathShape segment(STRAIGHT, p1_wind, p2_wind, stat.airspeed, stat.turn_radius, 0.);
                             // DynamicPathShape segment_nowind(STRAIGHT, p1, p2, stat.airspeed, stat.turn_radius, 0.);
 
-                            // if (stat.id == 60) arcs_as_obstacles.push_back(segment_nowind);
+                            // if (stat.id == 60) path_as_obstacles.push_back(segment_nowind);
 
                             for (uint j = 0; j < obstacles.size(); j++)
                             {
@@ -316,6 +318,12 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
 
         all_paths[i] = std::move(filtered_paths);
     }
+
+    // if (path_as_obstacles.size() > 0)
+    // {
+    //     std::ofstream path_as_obstacles_file("path_as_obstacles.json");
+    //     DubinsPP::OutputPrinter::print_obstacles_collection(path_as_obstacles_file, path_as_obstacles);
+    // }
 }
 
 // ---------- Smart sampling ---------- //
