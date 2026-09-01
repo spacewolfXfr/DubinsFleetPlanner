@@ -55,9 +55,11 @@ script/data/**
 debug_cases/**
 cases_precise/**
 cases/**
-results/**
 *.csv
 *.json
+
+# Make an exception for the results data, for bookkeeping purposes
+!results/**
 
 # Useful shortcuts for me
 DFP_Ui
