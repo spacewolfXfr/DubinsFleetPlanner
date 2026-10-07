@@ -23,6 +23,7 @@
 #include "ProjectHeader.h"
 
 #include "Primitives.hpp"
+#include "Pose3D.hpp"
 
 /**
  * @brief Given a normalized problem Dubins path planning problem with a minimum turn radius

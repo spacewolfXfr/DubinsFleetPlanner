@@ -19,6 +19,8 @@
 
 #include <tuple>
 
+#include "utils.hpp"
+
 
 /********************  Fundamental Dubins path computing  ********************/
 

@@ -38,6 +38,7 @@
 #include "utils.hpp"
 #include "Dubins.hpp"
 #include "ConflictList.hpp"
+#include "Pose3D.hpp"
 
 
 namespace DubinsPP

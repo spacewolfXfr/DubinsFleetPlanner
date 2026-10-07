@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "Dubins.hpp"
 #include "Primitives.hpp"
 #include "utils.hpp"

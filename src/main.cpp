@@ -32,6 +32,7 @@
 #include "FleetPlanner.hpp"
 #include "PathGenerators/all.hpp"
 #include "ConflictList.hpp"
+#include "Pose3D.hpp"
 
 /******************** Util functions ********************/
 

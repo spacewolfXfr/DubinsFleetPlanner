@@ -42,6 +42,7 @@ set(DubinsFleetPlannerLib_SRC
     PathGenerators/Extended.cpp
     PathGenerators/Sampling.cpp
     Primitives.cpp
+    Pose3D.cpp
     utils.cpp)
 
 set(DubinsFleetPlannerLib_INCL

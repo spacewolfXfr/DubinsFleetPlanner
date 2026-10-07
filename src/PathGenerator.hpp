@@ -3,6 +3,7 @@
 #include <string>
 
 #include "Dubins.hpp"
+#include "Pose3D.hpp"
 
 /**
  * @brief Toplevel class describing a path generator (from a start to an end, with given climb rate and turn radius),

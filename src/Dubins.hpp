@@ -22,8 +22,7 @@
 #include <cmath>
 #include <string>
 #include <memory>
-
-#include <boost/container_hash/hash.hpp>
+#include <optional>
 
 #include "ProjectHeader.h"
 
@@ -31,6 +30,7 @@
 #include "Aircraft.h"
 #include "Primitives.hpp"
 #include "Fitting.hpp"
+#include "Pose3D.hpp"
 
 const uint DubinsDistDefaultRec = 6;
 

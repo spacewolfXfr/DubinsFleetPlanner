@@ -21,6 +21,7 @@
 
 #include "Dubins.hpp"
 #include "BaseDubins.hpp"
+#include "Pose3D.hpp"
 
 // ---------- Generator functions ---------- //
 
