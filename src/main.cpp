@@ -504,12 +504,13 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     std::vector<Dubins> obstacle_paths = {};
     std::vector<AircraftStats> obstacle_stats = {};
+    std::vector<double> obstacle_delays = {};
     double __wind_x,__wind_y,__min_sep,__z_alpha;
 
     if (!args.obstacle_pathname.empty())
     {
         std::ifstream obstacle_src(args.obstacle_pathname);
-        DubinsPP::InputParser::parse_paths_as_ModernJSON(obstacle_src,obstacle_paths,obstacle_stats,
+        DubinsPP::InputParser::parse_paths_as_ModernJSON(obstacle_src,obstacle_paths,obstacle_stats,obstacle_delays,
             __min_sep,__wind_x,__wind_y,__z_alpha);       
     }
     
@@ -669,7 +670,7 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     {
         planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,extra,starts,ends,stats,args.separation,timeslots,
             args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
-            obstacle_paths,obstacle_stats,geometric_obstacles
+            obstacle_paths,obstacle_stats,obstacle_delays,geometric_obstacles
             );
     }
     else
@@ -682,7 +683,7 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
             args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
             args.thread_num,
             args.max_solver_time,
-            obstacle_paths,obstacle_stats,
+            obstacle_paths,obstacle_stats,obstacle_delays,
             geometric_obstacles);
     }
 

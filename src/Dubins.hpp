@@ -365,6 +365,26 @@ public:
         return get_pathshape(len).m;
     }
 
+    /**
+     * @brief Get a new Dubins path that follows this one for a given length
+     *
+     * @param len Length to follow
+     * @return Dubins
+     */
+    Dubins follow_for(double len) const;
+
+    /**
+     * @brief Get a new Dubins path that follows this one for a given time at a given speed
+     *
+     * @param time Time to follow
+     * @param speed Speed at which to follow
+     * @return Dubins
+     */
+    Dubins follow_for(double time, double speed) const
+    {
+        return follow_for(time * speed);
+    }
+
     /************************ Seperation functions ************************/
 
     /**

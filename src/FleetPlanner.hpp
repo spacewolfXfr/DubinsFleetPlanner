@@ -121,10 +121,13 @@ std::set<uint> acs_without_paths(const ListOfPossibilities& all_paths);
  * @param stats                 Aircraft stats associated to candidate paths
  * @param obstacle_paths        Obstacle paths
  * @param obstacle_stats        Stats of obstacle aircraft paths
+ * @param obstacle_delays       Delays of obstacle aircraft paths
+ * @param min_sep               Minimal separation desired (non-negative)
  */
 template<Dubins::DubinsDistanceFunction distance_function>
 void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<AircraftStats> &stats,
     const std::vector<Dubins>& obstacle_paths, const std::vector<AircraftStats>& obstacle_stats,
+    const std::vector<double>& obstacle_delays,
     double min_sep)
 {
     for(uint i = 0; i < stats.size(); i++)
@@ -141,14 +144,25 @@ void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<Ai
             {
                 const Dubins& p = *p_ptr;
                 const Dubins& c = obstacle_paths[j];
+                const double delay = obstacle_delays[j];
                 const AircraftStats& cs = obstacle_stats[j];
-                 
+                
+                std::pair<double,double> res;
 
-                std::pair<double,double> res = generic_compute_distance<distance_function>(p,c,s,cs,min_sep);
+                if (delay > DubinsFleetPlanner_PRECISION)
+                {
+                    const Dubins& p_followed = p.follow_for(delay * s.airspeed);
+                    res = generic_compute_distance<distance_function>(p_followed,c,s,cs,min_sep);
+                }
+                else
+                {
+                    res = generic_compute_distance<distance_function>(p,c,s,cs,min_sep);
+                }
 
                 if (res.second < min_sep)
                 {
                     conflict_free = false;
+                    break;
                 }
             }
 
@@ -738,6 +752,8 @@ public:
      *                      Otherwise, use the given value
      * @param obstacle_paths Paths acting as obstacles (representing other aircraft)
      * @param obstacle_stats Flight characteristics of the obstacle aircraft
+     * @param obstacle_delays Delays before which each obstacle path is active (same size as obstacle_paths)
+     * @param geometric_obstacles  Geometric obstacles to avoid (2D only)
      * @return std::set<uint> The set of aircraft IDs with no possible paths
      */
     template<Dubins::DubinsSeparationFunction separation_function, Dubins::DubinsDistanceFunction distance_function>
@@ -751,6 +767,7 @@ public:
         bool reallocate = false,
         int threads = 0,
         const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
+        const std::vector<double>& obstacle_delays = {},
         const std::vector<DynamicPathShape>& geometric_obstacles = {}
     ) const
     {
@@ -805,7 +822,7 @@ public:
             std::cout << std::endl;
         }
 
-        filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,min_sep);
+        filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,obstacle_delays,min_sep);
 
         if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
         {
@@ -905,6 +922,8 @@ public:
      *                          Otherwise, use the given value
      * @param obstacle_paths Paths acting as obstacles (representing other aircraft)
      * @param obstacle_stats Flight characteristics of the obstacle aircraft
+     * @param obstacle_delays Delays before which each obstacle path is active (same size as obstacle_paths)
+     * @param geometric_obstacles  Geometric obstacles to avoid (2D only)
      */
     template<Dubins::DubinsSeparationFunction separation_function, Dubins::DubinsDistanceFunction distance_function>
     void solve(
@@ -920,6 +939,7 @@ public:
         int threads = -1,
         int max_time_s = 60,
         const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
+        const std::vector<double>& obstacle_delays = {},
         const std::vector<DynamicPathShape>& geometric_obstacles = {}
     ) const
     {
@@ -1045,7 +1065,7 @@ public:
                 wind_x,wind_y,
                 reallocate,
                 threads,
-                obstacle_paths,obstacle_stats,
+                obstacle_paths,obstacle_stats,obstacle_delays,
                 geometric_obstacles);
 
             iter->NoPathsACs = nopaths_acs;
@@ -1142,9 +1162,11 @@ public:
      *                          If negative, disable threading
      *                          If 0, set the number of threads to std::thread::hardware_concurrency()
      *                          Otherwise, use the given value
+     * @param add_shortest  If true, adds shortest possible paths for each aircraft. Note that with this enabled, a pth may have a duration outside of the allocated timeslots. 
      * @param obstacle_paths Paths acting as obstacles (representing other aircraft)
      * @param obstacle_stats Flight characteristics of the obstacle aircraft
-     * @param add_shortest  If true, adds shortest possible paths for each aircraft. Note that with this enabled, a pth may have a duration outside of the allocated timeslots. 
+     * @param obstacle_delays Delays before which each obstacle path is active (same size as obstacle_paths)
+     * @param geometric_obstacles  Geometric obstacles to avoid (2D only)
      * @return std::set<uint> The set of aircraft IDs with no possible paths
      */
     template<Dubins::DubinsSeparationFunction separation_function, Dubins::DubinsDistanceFunction distance_function>
@@ -1158,6 +1180,7 @@ public:
         int threads = -1,
         bool add_shortest = false,
         const std::vector<Dubins>& obstacle_paths = {}, const std::vector<AircraftStats>& obstacle_stats = {},
+        const std::vector<double>& obstacle_delays = {},
         const std::vector<DynamicPathShape>& geometric_obstacles = {}
     ) const
     {
@@ -1224,7 +1247,7 @@ public:
             std::cout << std::endl;
         }
 
-        filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,min_sep);
+        filter_colliding_paths<distance_function>(possibilities,stats,obstacle_paths,obstacle_stats,obstacle_delays,min_sep);
 
         filter_2D_geometric_colliding_paths(possibilities,stats,geometric_obstacles,precision_tol,wind_x,wind_y);
 

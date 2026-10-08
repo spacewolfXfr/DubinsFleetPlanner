@@ -42,125 +42,114 @@ void Dubins::recompute()
 
         curr_len += s.length;
         junctions_locs.push_back(curr_len);
-        if (s.m == STRAIGHT)
-        {
-            p = follow_dubins<STRAIGHT>(p, s.length, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else if (s.m == LEFT)
-        {
-            p = follow_dubins<LEFT>(p, s.length, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else if (s.m == RIGHT)
-        {
-            p = follow_dubins<RIGHT>(p, s.length, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else
-        {
-            throw std::runtime_error("Unknown DubinsMove");
-        }
-
+        p = follow_dubins(s, s.length);
         junctions.push_back(p);
     }
 }
 
 // ---------- Compute position ---------- //
 
+Pose3D Dubins::get_position(double len) const
+{
+    uint i = 0;
+    uint N = sections.size();
 
-    Pose3D Dubins::get_position(double len) const
+    while (i < N - 1 && len > junctions_locs[i])
+    {
+        i++;
+    }
+
+    Pose3D p;
+    if (i == 0)
+    {
+        p = start;
+    }
+    else
+    {
+        p = junctions[i - 1];
+        len -= junctions_locs[i - 1];
+    }
+
+    DynamicPathShape s = sections[i];
+    return follow_dubins(s, len);
+}
+
+const std::vector<Pose3D> Dubins::get_positions(std::vector<double> &lens, bool sorted) const
+{
+    std::vector<Pose3D> output;
+    if (!sorted)
+    {
+        for (const double &l : lens)
+        {
+            output.push_back(get_position(l));
+        }
+    }
+    else
     {
         uint i = 0;
         uint N = sections.size();
+        for (double len : lens)
+        {
+            while (i < N - 1 && len > junctions_locs[i])
+            {
+                i++;
+            }
 
-        while (i < N - 1 && len > junctions_locs[i])
-        {
-            i++;
-        }
+            Pose3D p;
+            if (i == 0)
+            {
+                p = start;
+            }
+            else
+            {
+                p = junctions[i - 1];
+                len -= junctions_locs[i - 1];
+            }
 
-        Pose3D p;
-        if (i == 0)
-        {
-            p = start;
-        }
-        else
-        {
-            p = junctions[i - 1];
-            len -= junctions_locs[i - 1];
-        }
-
-        DynamicPathShape s = sections[i];
-        if (s.m == STRAIGHT)
-        {
-            return follow_dubins<STRAIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else if (s.m == LEFT)
-        {
-            return follow_dubins<LEFT>(p, len, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else if (s.m == RIGHT)
-        {
-            return follow_dubins<RIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1);
-        }
-        else
-        {
-            throw std::runtime_error("Unknown DubinsMove");
+            DynamicPathShape s = sections[i];
+            output.push_back(follow_dubins(s, len));
         }
     }
+    return output;
+}
 
-
-    const std::vector<Pose3D> Dubins::get_positions(std::vector<double> &lens, bool sorted) const
+Dubins Dubins::follow_for(double len) const
+{
+    if (len < 0)
     {
-        std::vector<Pose3D> output;
-        if (!sorted)
-        {
-            for (const double &l : lens)
-            {
-                output.push_back(get_position(l));
-            }
-        }
-        else
-        {
-            uint i = 0;
-            uint N = sections.size();
-            for (double len : lens)
-            {
-                while (i < N - 1 && len > junctions_locs[i])
-                {
-                    i++;
-                }
-
-                Pose3D p;
-                if (i == 0)
-                {
-                    p = start;
-                }
-                else
-                {
-                    p = junctions[i - 1];
-                    len -= junctions_locs[i - 1];
-                }
-
-                DynamicPathShape s = sections[i];
-                if (s.m == STRAIGHT)
-                {
-                    output.push_back(follow_dubins<STRAIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1));
-                }
-                else if (s.m == LEFT)
-                {
-                    output.push_back(follow_dubins<LEFT>(p, len, 1., s.p3 / s.planar_speed(), s.p1));
-                }
-                else if (s.m == RIGHT)
-                {
-                    output.push_back(follow_dubins<RIGHT>(p, len, 1., s.p3 / s.planar_speed(), s.p1));
-                }
-                else
-                {
-                    throw std::runtime_error("Unknown DubinsMove");
-                }
-            }
-        }
-        return output;
+        throw std::runtime_error("Negative length not supported");
     }
 
+    if (len > get_length())
+    {
+        throw std::runtime_error("Length exceeds path length");
+    }
+
+    uint i = 0;
+    uint N = sections.size();
+
+    while (i < N - 1 && len > junctions_locs[i])
+    {
+        i++;
+    }
+
+    Pose3D p;
+    if (i == 0)
+    {
+        p = start;
+    }
+    else
+    {
+        p = junctions[i - 1];
+        len -= junctions_locs[i - 1];
+    }
+
+    DynamicPathShape s = sections[i];
+    std::vector<DynamicPathShape> new_sections(sections.begin() + i, sections.end());
+    new_sections[0] = shift_start(s, len);
+
+    return Dubins(p, end, new_sections);
+}
 
 // ---------- Local template for computing separation between shapes ---------- //
 

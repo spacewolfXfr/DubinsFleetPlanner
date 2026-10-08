@@ -121,6 +121,7 @@ namespace DubinsPP
          * @param s         Input stream
          * @param paths     Solution Dubins paths
          * @param stats     Statistics of the aircraft
+         * @param delays    Delay between now and trajectory start for each aircraft
          * @param min_sep   Minimal separation requested
          * @param wind_x    Wind, X component
          * @param wind_y    Wind, Y component
@@ -129,6 +130,7 @@ namespace DubinsPP
         void parse_paths_as_ModernJSON(std::istream& s, 
             std::vector<Dubins>& paths,
             std::vector<AircraftStats>& stats,
+            std::vector<double>& delays,
             double& min_sep,
             double& wind_x, double& wind_y,
             double& z_alpha);

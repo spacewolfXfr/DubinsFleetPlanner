@@ -75,12 +75,13 @@ int main(int argc, char *argv[])
 
     std::vector<Dubins> paths;
     std::vector<AircraftStats> stats;
+    std::vector<double> delays;
     double min_sep;
     double wind_x, wind_y;
     double z_alpha;
 
     DubinsPP::InputParser::parse_paths_as_ModernJSON(json_stream,
-        paths,stats,min_sep,wind_x,wind_y,z_alpha);
+        paths,stats,delays,min_sep,wind_x,wind_y,z_alpha);
 
     // ----- Plotting ----- //
 

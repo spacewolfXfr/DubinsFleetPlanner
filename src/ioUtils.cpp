@@ -403,12 +403,11 @@ void parse_json_ModernTrajectory(const json& j,
 void DubinsPP::InputParser::parse_paths_as_ModernJSON(std::istream& s, 
     std::vector<Dubins>& paths,
     std::vector<AircraftStats>& stats,
+    std::vector<double>& delays,
     double& min_sep,
     double& wind_x, double& wind_y,
     double& z_alpha)
 {
-    // throw std::invalid_argument("This function is not yet fully implemented!");
-
     json j;
 
     s >> j;
@@ -433,6 +432,13 @@ void DubinsPP::InputParser::parse_paths_as_ModernJSON(std::istream& s,
             parse_json_ModernTrajectory(j_trajectory,path,stat);
             paths.push_back(path);
             stats.push_back(stat);
+            double delay = 0.;
+            if (j_trajectory.contains("delay"))
+            {
+                delay = j_trajectory.at("delay");
+            }
+            delays.push_back(delay);
+
         }
 
     }

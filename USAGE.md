@@ -53,51 +53,10 @@ Behavioral defaults:
 - If `--line` is set and `--line-ratios` is omitted, ratios default to `[0, 0.5, 1]`.
 - `--samples` must be non-negative.
 
-## Input CSV format
+## JSON Paths format
 
-The parser expects the first 13 columns exactly as:
-
-```text
-ac_id;start_x;start_y;start_z;start_theta;end_x;end_y;end_z;end_theta;airspeed;climb;turn_radius;dt
-```
-
-These fields describe, for each aircraft:
-
-- `ac_id`: integer aircraft id.
-- `start_[x,y,z,theta]`: start pose (`theta` in radians).
-- `end_[x,y,z,theta]`: end pose (`theta` in radians).
-- `airspeed`: positive speed in air reference frame.
-- `climb`: positive climb rate (used symmetrically for descent).
-- `turn_radius`: positive minimum turn radius.
-- `dt`: arrival-time difference from the previous aircraft (ignored for the first aircraft).
-
-Any extra columns are interpreted as per-aircraft timeslots. If at least one aircraft has timeslots, the solver uses timeslot mode; otherwise it uses delta-time mode from `dt`.
-
-> Note: core conflict handling is currently XY-focused. Z values are parsed and propagated but are not treated as a full 3D separation model.
-
-## Output format
-
-Output format is selected from the output extension:
-
-- `.csv`: sampled trajectories (`--export-samples` controls sample count).
-- anything else (or no extension): JSON trajectory output.
-
-In batch mode, each case output name is derived from the input filename with extension:
-
-```text
-.sol<output_extension_or_.json_if_missing>
-```
-
-Example: if `output` path has extension `.csv`, each case is written as `*.sol.csv`.
-
-### CSV output
-
-If it ends with `.csv`, stores the results by sampling each path (see flag `-s`), and put them in a CSV with samples+1 lines
-(data+header), the header being: `time;[X_{ac_id};Y_{ac_id};Z_{ac_id};theta_{ac_id}]*{number of aircraft}`
-
-### JSON output
-
-Otherwise, stores the results in JSON format as follows (two sub-objects are defined further down):
+We define a JSON format for encoding several trajectories. This format is used both for giving pre-existing trajectories to the solvers
+as obstacles (the `-O` option), and as output format.
 
 ```json
 {
@@ -109,14 +68,16 @@ Otherwise, stores the results in JSON format as follows (two sub-objects are def
    "AC_num"    : (Int Number  : number of aircraft),
    "trajectories": [
       {
-         "stats": Stats object,
-         "path": Path object
+         "stats"  : Stats object,
+         "path"   : Path object,
+         "delay"  : (Float Number, optional: Time delay before the trajectory starts.)
       },...
    ]
 }
 ```
 
 A `trajectory` is the combination of both the `Path`, i.e. the geometry drawing; and the `Stats` which describe how the aircraft follows said geometry.
+When a `trajectory` is given in input as obstacle, it may also contain a `delay` field, indicating when in the future the trajectory will begin.
 
 A `Pose3D` object is defined as follows:
 
@@ -169,6 +130,55 @@ A `BasicPath` object:
    "p4"    : (Float Number: For a Straight: unused | For a turn: initial angle),
 }
 ```
+
+Regarding the geometric obstacles (the `-G` option), the JSON file is expected to contain an array of `Path` objects.
+
+## Input CSV format
+
+The fleet path planning problem is expected to be described as a CSV file, separated with semi-colons.
+The first 13 columns must match:
+
+```text
+ac_id;start_x;start_y;start_z;start_theta;end_x;end_y;end_z;end_theta;airspeed;climb;turn_radius;dt
+```
+
+These fields describe, for each aircraft:
+
+- `ac_id`: integer aircraft id.
+- `start_[x,y,z,theta]`: start pose (`theta` in radians).
+- `end_[x,y,z,theta]`: end pose (`theta` in radians).
+- `airspeed`: positive speed in air reference frame.
+- `climb`: positive climb rate (used symmetrically for descent).
+- `turn_radius`: positive minimum turn radius.
+- `dt`: arrival-time difference from the previous aircraft (ignored for the first aircraft).
+
+Any extra columns are interpreted as per-aircraft timeslots. If at least one aircraft has timeslots, the solver uses timeslot mode; otherwise it uses delta-time mode from `dt`.
+
+> Note: core conflict handling is currently XY-focused. Z values are parsed and propagated but are not treated as a full 3D separation model.
+
+## Output format
+
+Output format is selected from the output extension:
+
+- `.csv`: sampled trajectories (`--export-samples` controls sample count).
+- anything else (or no extension): JSON trajectory output.
+
+In batch mode, each case output name is derived from the input filename with extension:
+
+```text
+.sol<output_extension_or_.json_if_missing>
+```
+
+Example: if `output` path has extension `.csv`, each case is written as `*.sol.csv`.
+
+### CSV output
+
+If it ends with `.csv`, stores the results by sampling each path (see flag `-s`), and put them in a CSV with samples+1 lines
+(data+header), the header being: `time;[X_{ac_id};Y_{ac_id};Z_{ac_id};theta_{ac_id}]*{number of aircraft}`
+
+### JSON output
+
+Otherwise, the results are stored in the JSON Paths format described previously.
 
 ## Per-aircraft path generation configuration (`--pathgen-config`)
 
