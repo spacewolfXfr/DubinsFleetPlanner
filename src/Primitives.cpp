@@ -1021,10 +1021,10 @@ void DynamicPathShape::shift_start(double dt, bool reduce_length)
     z   += p3*dt;
 }
 
-DynamicPathShape shift_start(const DynamicPathShape& s, double duration)
+DynamicPathShape shift_start(const DynamicPathShape& s, double duration, bool update_length)
 {
     DynamicPathShape output(s);
-    output.shift_start(duration);
+    output.shift_start(duration,update_length);
     return output;
 }
 

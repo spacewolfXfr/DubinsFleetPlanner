@@ -148,7 +148,7 @@ Dubins Dubins::follow_for(double len) const
     std::vector<DynamicPathShape> new_sections(sections.begin() + i, sections.end());
     new_sections[0] = shift_start(s, len);
 
-    return Dubins(p, end, new_sections);
+    return Dubins(new_sections[0].initial_pose(), end, new_sections);
 }
 
 // ---------- Local template for computing separation between shapes ---------- //

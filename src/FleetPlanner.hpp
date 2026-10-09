@@ -151,6 +151,10 @@ void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<Ai
 
                 if (delay > DubinsFleetPlanner_PRECISION)
                 {
+                    if (delay > p.get_duration(s.airspeed))
+                    {
+                        continue;
+                    }
                     const Dubins& p_followed = p.follow_for(delay * s.airspeed);
                     res = generic_compute_distance<distance_function>(p_followed,c,s,cs,min_sep);
                 }
@@ -1239,6 +1243,12 @@ public:
 
         if (verbosity >= DubinsFleetPlanner_VERY_VERBOSE)
         {
+            std::cout << "Involved Aircraft IDs: ";
+            for(const auto& stat : stats)
+            {
+                std::cout << stat.id << ", ";
+            }
+            std::cout << std::endl;
             std::cout << "Before dynamic obstacles filtering, there are " << possibilities.size() << " aircraft with the following number of paths : ";
             for(const auto& ac_possibilities : possibilities)
             {

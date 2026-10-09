@@ -571,4 +571,12 @@ template<DubinsMove m>
 [[gnu::pure]]
 PathShape<m> shift_start(const PathShape<m>& s, double duration);
 
-DynamicPathShape shift_start(const DynamicPathShape& s, double duration);
+/**
+ * @brief Compute an equivalent path shape by shifting the starting point to the location after the given duration
+ * 
+ * @param s         Structure describing the shape to follow (including speed and starting point)
+ * @param duration  Duration of path following shifting the start
+ * @param update_length If true, the output shape length is reduced appropriately from duration. Otherwise, it is left unchanged. Default to true.
+ * @return          New structure with shifted start
+ */
+DynamicPathShape shift_start(const DynamicPathShape& s, double duration, bool update_length=true);

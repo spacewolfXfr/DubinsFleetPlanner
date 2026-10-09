@@ -688,34 +688,6 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     }
 
     extra.duration = chrono::thread_clock::now(boost::throws()) - start;
-    
-    // if (sols.size() != stats.size()) // If no solution, retry without separation
-    // {
-    //     ExtraPPResults _backup;
-    //     good_solution = false;
-    //     std::cerr << "WARNING: Could not find a solution; retrying with HALF SEPARATION ( " << args.separation/2 << " )" << std::endl;
-        
-    //     if (!empty_timeslots)
-    //     {
-    //         planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,0,timeslots,
-    //             args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
-    //             obstacle_paths,obstacle_stats,geometric_obstacles
-    //             );
-    //     }
-    //     else
-    //     {
-    //         planner->solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,_backup,starts,ends,stats,
-    //             args.separation/2,dt,
-    //             args.wind_x,args.wind_y,
-    //             args.reallocate,
-    //             args.max_iters,
-    //             args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
-    //             args.thread_num,
-    //             args.max_solver_time,
-    //             obstacle_paths,obstacle_stats,
-    //             geometric_obstacles);
-    //     }
-    // }
         
     if (sols.size() != stats.size())
     {
@@ -734,13 +706,13 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
             }
         }
 
-        obstacle_paths.insert(obstacle_paths.end(),
-            std::move_iterator(sols.begin()),std::move_iterator(sols.end()));
+        // obstacle_paths.insert(obstacle_paths.end(),
+        //     std::move_iterator(sols.begin()),std::move_iterator(sols.end()));
 
-        obstacle_stats.insert(obstacle_stats.end(),
-            stats.begin(),stats.end());
+        // obstacle_stats.insert(obstacle_stats.end(),
+        //     stats.begin(),stats.end());
 
-        write_result(output_path,obstacle_paths,obstacle_stats,args);
+        write_result(output_path,sols,stats,args);
 
         if (good_solution)
         {
