@@ -32,6 +32,11 @@ void Dubins::recompute()
 
     uint N = sections.size();
 
+    for(DynamicPathShape& s : sections)
+    {
+        s.set_planar_speed(1.);
+    }
+
     for (uint i = 0; i < N - 1; i++)
     {
         const DynamicPathShape &s = sections[i];
