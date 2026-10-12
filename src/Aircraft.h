@@ -28,3 +28,23 @@ typedef struct {
     double min_acceleration; // Minimal acceleration (horizontal, along the path). Default to zero.
     double max_acceleration; // Maximal acceleration (horizontal, along the path). Default to zero.
 } AircraftStats;
+
+/**
+ * @brief Compute the length traveled by an aircraft at a given time, assuming linearly changing speed according to the aircraft's stats.
+ * 
+ * @param stats Aircraft stats
+ * @param t     Time
+ * @param trajectory_duration Total duration of the followed trajectory
+ * @return double Length traveled at time t
+ */
+double length_traveled(const AircraftStats& stats, double t, double trajectory_duration);
+
+/**
+ * @brief Compute the time required to travel a given length, assuming linearly changing speed according to the aircraft's stats.
+ * 
+ * @param stats Aircraft stats
+ * @param length Length to travel
+ * @param trajectory_duration Total duration of the followed trajectory
+ * @return double Time at which the aircraft has traveled the given length
+ */
+double time_to_travel_length(const AircraftStats& stats, double length, double trajectory_duration);

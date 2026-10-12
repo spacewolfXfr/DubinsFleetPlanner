@@ -459,25 +459,40 @@ std::pair<double, double> compute_XY_separation(
  *
  * @param p1 One Dubins path
  * @param p2 Other Dubins path
- * @param p1_speed Speed along first path
- * @param p2_speed Speed along second path
+ * @param p1_stats Aircraft stats along first path
+ * @param p2_stats Aircraft stats along second path
  * @param duration Duration for which we follow the path
  * @return std::vector<double> List of junctions timestamps
  */
-static std::vector<double> compute_timepoints(const Dubins &p1, const Dubins &p2, double p1_speed, double p2_speed, double &duration)
+static std::vector<double> compute_timepoints(const Dubins &p1, const Dubins &p2, const AircraftStats& p1_stats, const AircraftStats& p2_stats, double &duration)
 {
     std::vector<double> timepoints = {0.};
 
-    std::vector<double> this_junctions = p1.get_junction_locs();
-    std::vector<double> other_junctions = p2.get_junction_locs();
-    size_t this_index = 0;
-    size_t other_index = 0;
+    std::vector<double> p1_junctions = p1.get_junction_locs();
+    std::vector<double> p2_junctions = p2.get_junction_locs();
+    double p1_duration = p1.get_duration(p1_stats);
+    double p2_duration = p2.get_duration(p2_stats);
+
+    std::vector<double> p1_junctions_times;
+    for(const double &l : p1_junctions)
+    {
+        p1_junctions_times.push_back(time_to_travel_length(p1_stats, l, p1_duration));
+    }
+
+    std::vector<double> p2_junctions_times;
+    for(const double &l : p2_junctions)
+    {
+        p2_junctions_times.push_back(time_to_travel_length(p2_stats, l, p2_duration));
+    }
+
+    size_t p1_index = 0;
+    size_t p2_index = 0;
 
     // Merge the junctions points lists by timestamp until total duration is met
-    while ((this_index < this_junctions.size()) && (other_index < other_junctions.size()))
+    while ((p1_index < p1_junctions.size()) && (p2_index < p2_junctions.size()))
     {
-        double this_candidate = this_junctions[this_index] / p1_speed;
-        double other_candidate = other_junctions[other_index] / p2_speed;
+        double this_candidate = p1_junctions_times[p1_index];
+        double other_candidate = p2_junctions_times[p2_index];
         if ((this_candidate > duration) && (other_candidate > duration))
         {
             break;
@@ -485,25 +500,25 @@ static std::vector<double> compute_timepoints(const Dubins &p1, const Dubins &p2
         if (this_candidate < other_candidate)
         {
             timepoints.push_back(this_candidate);
-            this_index++;
+            p1_index++;
         }
         else
         {
             timepoints.push_back(other_candidate);
-            other_index++;
+            p2_index++;
         }
     }
 
-    while ((this_index < this_junctions.size()) && (this_junctions[this_index] / p1_speed < duration))
+    while ((p1_index < p1_junctions.size()) && (p1_junctions_times[p1_index] < duration))
     {
-        timepoints.push_back(this_junctions[this_index] / p1_speed);
-        this_index++;
+        timepoints.push_back(p1_junctions_times[p1_index]);
+        p1_index++;
     }
 
-    while ((other_index < other_junctions.size()) && (other_junctions[other_index] / p2_speed < duration))
+    while ((p2_index < p2_junctions.size()) && (p2_junctions_times[p2_index] < duration))
     {
-        timepoints.push_back(other_junctions[other_index] / p2_speed);
-        other_index++;
+        timepoints.push_back(p2_junctions_times[p2_index]);
+        p2_index++;
     }
 
     timepoints.push_back(duration);
@@ -522,7 +537,7 @@ static std::pair<double, double> compute_XY_separation_between_trajectories(
         duration, min_dist, tol, rec);
 }
 
-std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, double this_speed, double other_speed,
+std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const AircraftStats& this_stats, const AircraftStats& other_stats,
                                                  double duration, double min_dist, double tol, std::optional<double> hotstart, uint rec) const
 {
 #if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
@@ -530,7 +545,7 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, double thi
     assert((this->is_valid()) && (other.is_valid()));
 #endif
 
-    std::vector<double> timepoints = compute_timepoints(*this, other, this_speed, other_speed, duration);
+    std::vector<double> timepoints = compute_timepoints(*this, other, this_stats, other_stats, duration);
     std::pair<double, double> output = {0., INFINITY};
 
     size_t index; // Path section index for hot start
@@ -545,8 +560,8 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, double thi
         const DynamicPathShape &curr_ref_shape = this->get_pathshape((times.front() + times.back()) / 2);
         const DynamicPathShape &other_ref_shape = other.get_pathshape((times.front() + times.back()) / 2);
 
-        std::vector<Pose3D> curr_poses = this->get_positions(times, this_speed, true);
-        std::vector<Pose3D> other_poses = other.get_positions(times, other_speed, true);
+        std::vector<Pose3D> curr_poses = this->get_positions(times, this_stats, true);
+        std::vector<Pose3D> other_poses = other.get_positions(times, other_stats, true);
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses.front(), curr_poses.back(),
                                     this_speed, curr_ref_shape.p1, curr_ref_shape.p3);
@@ -570,8 +585,8 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, double thi
         index = timepoints.size(); // Return past-the-post value to avoid skipping
     }
 
-    std::vector<Pose3D> curr_poses = this->get_positions(timepoints, this_speed, true);
-    std::vector<Pose3D> other_poses = other.get_positions(timepoints, other_speed, true);
+    std::vector<Pose3D> curr_poses = this->get_positions(timepoints, this_stats, true);
+    std::vector<Pose3D> other_poses = other.get_positions(timepoints, other_stats, true);
 
     std::vector<double> curr_endlocs = this->get_endpoints_locs();
     std::vector<double> other_endlocs = other.get_endpoints_locs();
@@ -623,7 +638,7 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, double thi
     return output;
 }
 
-bool Dubins::is_XY_separated_from(const Dubins &other, double this_speed, double other_speed,
+bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this_stats, const AircraftStats& other_stats,
                                   double duration, double min_dist, double tol, std::optional<double> hotstart, uint rec) const
 {
 #if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
@@ -631,7 +646,7 @@ bool Dubins::is_XY_separated_from(const Dubins &other, double this_speed, double
     assert((this->is_valid()) && (other.is_valid()));
 #endif
 
-    std::vector<double> timepoints = compute_timepoints(*this, other, this_speed, other_speed, duration);
+    std::vector<double> timepoints = compute_timepoints(*this, other, this_stats, other_stats, duration);
     std::pair<double, double> output = {0., INFINITY};
 
     size_t index; // Path section index for hot start
@@ -646,8 +661,8 @@ bool Dubins::is_XY_separated_from(const Dubins &other, double this_speed, double
         const DynamicPathShape &curr_ref_shape = this->get_pathshape((times.front() + times.back()) / 2);
         const DynamicPathShape &other_ref_shape = other.get_pathshape((times.front() + times.back()) / 2);
 
-        std::vector<Pose3D> curr_poses = this->get_positions(times, this_speed, true);
-        std::vector<Pose3D> other_poses = other.get_positions(times, other_speed, true);
+        std::vector<Pose3D> curr_poses = this->get_positions(times, this_stats, true);
+        std::vector<Pose3D> other_poses = other.get_positions(times, other_stats, true);
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses.front(), curr_poses.back(),
                                     this_speed, curr_ref_shape.p1, curr_ref_shape.p3);
@@ -667,8 +682,8 @@ bool Dubins::is_XY_separated_from(const Dubins &other, double this_speed, double
         index = timepoints.size(); // Return past-the-post value to avoid skipping
     }
 
-    std::vector<Pose3D> curr_poses = this->get_positions(timepoints, this_speed, true);
-    std::vector<Pose3D> other_poses = other.get_positions(timepoints, other_speed, true);
+    std::vector<Pose3D> curr_poses = this->get_positions(timepoints, this_stats, true);
+    std::vector<Pose3D> other_poses = other.get_positions(timepoints, other_stats, true);
 
     std::vector<double> curr_endlocs = this->get_endpoints_locs();
     std::vector<double> other_endlocs = other.get_endpoints_locs();

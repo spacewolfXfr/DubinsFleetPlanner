@@ -124,8 +124,11 @@ public:
     Pose3D get_end() const { return end; }
 
     double get_length() const { return length; }
-    double get_duration(double speed) const { return length / speed; }
     bool is_valid() const { return valid; }
+    double get_duration(const AircraftStats stats) const
+    {
+        return 2*length/(stats.airspeed + stats.target_airspeed);
+    }
 
     /**
      * @brief Return the length spent in turns in this path.
@@ -217,20 +220,16 @@ public:
     Pose3D get_position(double len) const;
 
     /**
-     * @brief Get the position at the given time, assuming constant speed along the path.
+     * @brief Get the position at the given time, assuming linearly changing speed according to the aircraft's stats.
      *
      * @param time
-     * @param speed Must be positive
+     * @param stats Aircraft stats
      * @return Pose3D
      */
-    Pose3D get_position(double time, double speed) const
+    Pose3D get_position(double time, const AircraftStats& stats) const
     {
-
-#if DubinsFleetPlanner_ASSERTIONS > 0
-        assert(speed > 0);
-#endif
-
-        return get_position(time * speed);
+        double duration = get_duration(stats);
+        return get_position(length_traveled(stats, time, duration));
     }
 
     /**
@@ -243,24 +242,21 @@ public:
     const std::vector<Pose3D> get_positions(std::vector<double> &lens, bool sorted = false) const;
 
     /**
-     * @brief Get positions at several times, assuming a given constant speed
+     * @brief Get positions at several times, assuming linearly changing speed according to the aircraft's stats.
      *
      * @param times
-     * @param speed Must be positive
+     * @param stats Aircraft stats
      * @param sorted If True, assume times are sorted (speed up computations)
      * @return const std::vector<Pose3D>
      */
-    const std::vector<Pose3D> get_positions(std::vector<double> &times, double speed, bool sorted = false) const
+    const std::vector<Pose3D> get_positions(std::vector<double> &times, const AircraftStats& stats, bool sorted = false) const
     {
-
-#if DubinsFleetPlanner_ASSERTIONS > 0
-        assert(speed > 0);
-#endif
+        double duration = get_duration(stats);
 
         std::vector<double> lens(times);
         for (double &e : lens)
         {
-            e *= speed;
+            e = length_traveled(stats, e, duration);
         }
         return get_positions(lens, sorted);
     }
@@ -377,12 +373,13 @@ public:
      * @brief Get a new Dubins path that follows this one for a given time at a given speed
      *
      * @param time Time to follow
-     * @param speed Speed at which to follow
+     * @param stats Aircraft stats
      * @return Dubins
      */
-    Dubins follow_for(double time, double speed) const
+    Dubins follow_for(double time, const AircraftStats& stats) const
     {
-        return follow_for(time * speed);
+        double duration = get_duration(stats);
+        return follow_for(length_traveled(stats, time, duration));
     }
 
     /************************ Seperation functions ************************/
@@ -393,10 +390,10 @@ public:
      *
      *
      * @param other A second Dubins path
-     * @param this_speed    XY Speed along `this` path (in [L]/s)
-     * @param other_speed   XY Speed along `other` path (in [L]/s)
-     * @param duration Duration for which to look for conflicts (in s)
-     * @param min_dist The minimal distance required for ensuring separation (in [L])
+     * @param this_stats    Aircraft stats along `this` path
+     * @param other_stats   Aircraft stats along `other` path
+     * @param duration Duration for which to look for conflicts (in [time])
+     * @param min_dist The minimal distance required for ensuring separation (in [time], to be multiplied by the aircraft's speed)
      * @param tol      Solver tolerance used when looking for the minimal distance
      * @param hostart  Optional value for hotstarting the search: a place where the minimal separation might fail
      * @param rec      Depth of the recursive call to the fast but inexact geometric approximation
@@ -404,49 +401,49 @@ public:
      *                  - The first trajectory part breaching the minimal distance
      *                  - The global minimal distance between the two
      */
-    std::pair<double, double> XY_distance_to(const Dubins &other, double this_speed, double other_speed,
+    std::pair<double, double> XY_distance_to(const Dubins &other, const AircraftStats& this_stats, const AircraftStats& other_stats,
                                              double duration, double min_dist, double tol, std::optional<double> hostart = std::nullopt, uint rec = DubinsDistDefaultRec) const;
 
     /**
      * @brief A static version of `XY_distance_to`
      *
      */
-    static std::pair<double, double> compute_XY_distance(const Dubins &first, const Dubins &second, double first_speed, double second_speed,
+    static std::pair<double, double> compute_XY_distance(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
                                                          double duration, double min_dist,
                                                          double tol = DubinsFleetPlanner_PRECISION,
                                                          std::optional<double> hotstart = std::nullopt,
                                                          uint rec = DubinsDistDefaultRec)
     {
-        return first.XY_distance_to(second, first_speed, second_speed, duration, min_dist, tol, hotstart, rec);
+        return first.XY_distance_to(second, first_stats, second_stats, duration, min_dist, tol, hotstart, rec);
     }
 
     /**
      * @brief Generic type for distance function
      *
      * The arguments are:
-     * First path, second path, first speed, second speed, duration, minimal distance, computation precision, optional hot start, heuristic recursion
+     * First path, second path, first stats, second stats, duration, minimal distance, computation precision, optional hot start, heuristic recursion
      *
      * Returns the location and value of the minimal distance between trajectories
      */
     typedef std::pair<double, double> (*DubinsDistanceFunction)(const Dubins &, const Dubins &,
-                                                                double, double, double, double, double, std::optional<double>, uint);
+                                                                const AircraftStats&, const AircraftStats&, double, double, double, std::optional<double>, uint);
 
     /**
      * @brief Check whether `this` and `other` are horitzontaly separated
      *
      *
      * @param other A second Dubins path
-     * @param this_speed    XY Speed along `this` path (in [L]/s)
-     * @param other_speed   XY Speed along `other` path (in [L]/s)
-     * @param duration Duration for which to look for conflicts (in s)
-     * @param min_dist The minimal distance required for ensuring separation (in [L])
+     * @param this_stats    Aircraft stats along `this` path
+     * @param other_stats   Aircraft stats along `other` path
+     * @param duration Duration for which to look for conflicts (in [time])
+     * @param min_dist The minimal distance required for ensuring separation (in [time], to be multiplied by the aircraft's speed)
      * @param tol      Solver tolerance used when looking for the minimal distance
      * @param hostart  Optional value for hotstarting the search: a place where the minimal separation might fail
      * @param rec      Depth of the recursive call to the fast but inexact geometric approximation
      * @return true  The two trajectories are well separated
      * @return false The two trajectories are not separated
      */
-    bool is_XY_separated_from(const Dubins &other, double this_speed, double other_speed,
+    bool is_XY_separated_from(const Dubins &other, const AircraftStats& this_stats, const AircraftStats& other_stats,
                               double duration, double min_dist,
                               double tol = DubinsFleetPlanner_PRECISION,
                               std::optional<double> hotstart = std::nullopt,
@@ -455,13 +452,23 @@ public:
     /**
      * @brief A static version of `is_XY_separated_from`
      *
+     * @param first         First path
+     * @param second        Second path
+     * @param first_stats   Aircraft stats along `first` path
+     * @param second_stats  Aircraft stats along `second` path
+     * @param duration      Duration for which to look for conflicts (in [time])
+     * @param min_dist      The minimal distance required for ensuring separation (in [time], to be multiplied by the aircraft's speed)
+     * @param tol           Solver tolerance used when looking for the minimal distance
+     * @param rec           Depth of the recursive call to the fast but inexact geometric approximation
+     * @return true         The two trajectories are well separated
+     * @return false        The two trajectories are not separated
      */
-    static bool are_XY_separated(const Dubins &first, const Dubins &second, double first_speed, double second_speed,
+    static bool are_XY_separated(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
                                  double duration, double min_dist,
                                  double tol = DubinsFleetPlanner_PRECISION,
                                  uint rec = DubinsDistDefaultRec)
     {
-        return first.is_XY_separated_from(second, first_speed, second_speed, duration, min_dist, tol, std::nullopt, rec);
+        return first.is_XY_separated_from(second, first_stats, second_stats, duration, min_dist, tol, std::nullopt, rec);
     }
 
     /**
@@ -472,21 +479,23 @@ public:
      * @param first_speed   First path speed
      * @param second_speed  Second path speed
      * @param duration      Duration over which to check for separation
-     * @param min_dist      Minimal distance required
+     * @param min_dist      Minimal distance required, as a time unit (to be multiplied by the aircraft's speed)
      * @param tol           Distance between two successive time samples
      * @param rec           UNUSED, required for compatibility with other functions
      * @return true         The two trajectories are separated
      * @return false        There is a conflict
      */
-    static bool are_XY_separated_sampling(const Dubins &first, const Dubins &second, double first_speed, double second_speed,
+    static bool are_XY_separated_sampling(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
                                           double duration, double min_dist,
                                           double tol, [[maybe_unused]] uint rec)
     {
         double t = 0.;
+        double this_duration = first.get_duration(first_stats);
+        double other_duration = second.get_duration(second_stats);
         while (t < duration)
         {
-            Pose3D p1 = first.get_position(t * first_speed);
-            Pose3D p2 = second.get_position(t * second_speed);
+            Pose3D p1 = first.get_position(length_traveled(first_stats, t, this_duration));
+            Pose3D p2 = second.get_position(length_traveled(second_stats, t, other_duration));
 
             double dx = p1.x - p2.x;
             double dy = p1.y - p2.y;
@@ -506,19 +515,19 @@ public:
      * @brief Generic type for separation function
      *
      * The arguments are:
-     * First path, second path, first speed, second speed, duration, minimal distance, computation precision, heuristic recursion
+     * First path, second path, first aircraft stats, second aircraft stats, duration, minimal distance (as time unit, to be multiplied by the aircraft's speed), computation precision, heuristic recursion
      */
-    typedef bool (*DubinsSeparationFunction)(const Dubins &, const Dubins &, double, double, double, double, double, uint);
+    typedef bool (*DubinsSeparationFunction)(const Dubins &, const Dubins &, const AircraftStats&, const AircraftStats&, double, double, double, uint);
 
     /**
      * @brief Generic type for path generation function (minimal turn radius)
      *
      * The arguments are:
-     * Climb ratio, turn radius, start pose, end pose, endpoints dist tolerance
+     * Aircraft stats, start pose, end pose, endpoints dist tolerance
      *
      * Returns the list of valid paths as unique_ptr
      */
-    typedef std::vector<std::unique_ptr<Dubins>> (*PathGeneratorFunction)(double, double, const Pose3D &, const Pose3D &, double);
+    typedef std::vector<std::unique_ptr<Dubins>> (*PathGeneratorFunction)(const AircraftStats&, const Pose3D &, const Pose3D &, double);
 
     /**
      * @brief Generic type for fitted path generation function

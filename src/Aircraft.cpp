@@ -15,4 +15,39 @@
 // You should have received a copy of the GNU General Public License
 // along with PH_Spline.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <stdexcept>
 #include "Aircraft.h"
+
+double length_traveled(const AircraftStats& stats, double t, double trajectory_duration)
+{
+    double duration = trajectory_duration;
+    return t*t*(stats.target_airspeed-stats.airspeed)/(2.*duration) + stats.airspeed*t;
+}
+
+double time_to_travel_length(const AircraftStats& stats, double length, double trajectory_duration)
+{
+    double duration = trajectory_duration;
+    double a = (stats.target_airspeed-stats.airspeed)/(2.*duration);
+    double b = stats.airspeed;
+    double c = -length;
+
+    double discriminant = b*b - 4*a*c;
+
+    if (discriminant < 0)
+    {
+        throw std::runtime_error("No real solution for time_to_travel_length");
+    }
+
+    double sqrt_discriminant = std::sqrt(discriminant);
+
+    double t1 = (-b + sqrt_discriminant) / (2*a);
+    double t2 = (-b - sqrt_discriminant) / (2*a);
+
+    // We want the positive root that is within the duration
+    if (t1 >= 0 && t1 <= duration)
+        return t1;
+    else if (t2 >= 0 && t2 <= duration)
+        return t2;
+    else
+        throw std::runtime_error("No valid time solution within trajectory duration");
+}
