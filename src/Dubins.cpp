@@ -1,19 +1,19 @@
 // Copyright (C) 2025 Mael FEURGARD <mael.feurgard@enac.fr>
 //
-// This file is part of PH_Spline.
+// This file is part of DubinsFleetPlanner.
 //
-// PH_Spline is free software: you can redistribute it and/or modify
+// DubinsFleetPlanner is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// PH_Spline is distributed in the hope that it will be useful,
+// DubinsFleetPlanner is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with PH_Spline.  If not, see <https://www.gnu.org/licenses/>.
+// along with DubinsFleetPlanner.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Dubins.hpp"
 
@@ -159,179 +159,6 @@ Dubins Dubins::follow_for(double len) const
 // ---------- Local template for computing separation between shapes ---------- //
 
 /**
- * @brief Check is two basic path elements are separated based on the XY euclidean distance
- *
- * @tparam m1 Type of the first element
- * @tparam m2 Type of the second element
- * @param p1 First path
- * @param p2 Second path
- * @param duration Time duration of the section to study
- * @param min_sep Minial required distance
- * @param tol Precision with respect
- * @return true Path elements are separated
- * @return false Path are not separated
- */
-template <DubinsMove m1, DubinsMove m2>
-static bool check_XY_separation(const PathShape<m1> &p1, const PathShape<m2> &p2, double duration, double min_sep, double tol)
-{
-    if (duration < tol)
-    {
-        Pose3D p1_start = initial_pose(p1);
-        Pose3D p2_start = initial_pose(p2);
-        return pose_dist_XY(p1_start, p2_start) > min_sep;
-    }
-
-    if ((m1 == STRAIGHT) && (m2 == STRAIGHT))
-    {
-        auto loc_val_dist = temporal_XY_dist<m1, m2, true>(p1, p2, duration, tol);
-        if (loc_val_dist.second < min_sep)
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    }
-    else
-    {
-        double geo_dist;
-        double t1, t2;
-        std::tie(geo_dist, t1, t2) = geometric_XY_dist(p1, p2, duration);
-
-        if (geo_dist < min_sep)
-        {
-            auto loc_val_dist = temporal_XY_dist<m1, m2, true>(p1, p2, duration, tol);
-            if (loc_val_dist.second < min_sep)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-}
-
-/**
- * @brief Compute the minimal XY distance between two paths elements
- *
- * @tparam m1 Type of the first element
- * @tparam m2 Type of the second element
- * @tparam use_derivatives Use derivatives based global minimum seeking method. Default to true.
- * @param p1 First path
- * @param p2 Second path
- * @param duration Time duration of the section to study
- * @param min_sep Minial required distance
- * @param tol Precision with respect
- * @return A pair: Location and value of the minimal distance between two paths
- */
-template <DubinsMove m1, DubinsMove m2, bool use_derivatives = true>
-std::pair<double, double> compute_XY_separation(
-    const PathShape<m1> &p1, const PathShape<m2> &p2, double duration, double min_sep, double tol,
-    uint rec = DubinsDistDefaultRec)
-{
-    std::pair<double, double> output;
-
-    // Degenerate case: negligible duration -> move to point-point distance
-    if (duration < tol)
-    {
-        Pose3D p1_start = initial_pose(p1);
-        Pose3D p2_start = initial_pose(p2);
-
-        output.first = duration / 2.;
-        output.second = pose_dist_XY(p1_start, p2_start);
-
-        return output;
-    }
-
-    // In the straight-straight case, analytic exact solution exists
-    if ((m1 == STRAIGHT) && (m2 == STRAIGHT))
-    {
-        output = temporal_XY_dist<m1, m2, use_derivatives>(p1, p2, duration, tol);
-    }
-    else
-    {
-        double geo_dist;
-        double t1, t2;
-        std::tie(geo_dist, t1, t2) = geometric_XY_dist(p1, p2, duration);
-
-        // If there may be a conflict, do a detailed search
-        if (geo_dist < min_sep)
-        {
-            // If recursive computation is enabled, retry computing separation using geometry
-            if (rec > 0)
-            {
-
-                auto shifted_p1 = shift_start(p1, duration / 2);
-                auto shifted_p2 = shift_start(p2, duration / 2);
-
-                // If the geometric test suggests there is a collision in the second half, look at the second half first
-                if (t1 >= duration / 2 && t2 >= duration / 2)
-                {
-                    output = compute_XY_separation(shifted_p1, shifted_p2, duration / 2, min_sep, tol, rec - 1);
-                    output.first += duration / 2; // Location needs to be corrected due to shifting
-
-                    // If the recursive search found a conflict, output it
-                    if (output.second < min_sep)
-                    {
-                        return output;
-                    }
-                    // Otherwise, explore the other branch and output the smallest distance value
-                    else
-                    {
-                        auto output_bis = compute_XY_separation(p1, p2, duration / 2, min_sep, tol, rec - 1);
-                        if (output_bis.second < output.second)
-                        {
-                            return output_bis;
-                        }
-                        else
-                        {
-                            return output;
-                        }
-                    }
-                }
-                else
-                {
-                    output = compute_XY_separation(p1, p2, duration / 2, min_sep, tol, rec - 1);
-
-                    // If the recursive search found a conflict, output it
-                    if (output.second < min_sep)
-                    {
-                        return output;
-                    }
-                    // Otherwise, explore the other branch and output the smallest distance value
-                    else
-                    {
-                        auto output_bis = compute_XY_separation(shifted_p1, shifted_p2, duration / 2, min_sep, tol, rec - 1);
-                        output_bis.first += duration / 2; // Location needs to be corrected due to shifting
-                        if (output_bis.second < output.second)
-                        {
-                            return output_bis;
-                        }
-                        else
-                        {
-                            return output;
-                        }
-                    }
-                }
-            }
-            else // Otherwise, fallback on temporal method
-            {
-                output = temporal_XY_dist<m1, m2, use_derivatives>(p1, p2, duration, tol);
-            }
-        }
-        // Otherwise, use the result of the geometric separation
-        else
-        {
-            output.first = duration / 2.;
-            output.second = geo_dist;
-        }
-    }
-
-    return output;
-}
-
-/**
  * @brief Compute the minimal XY distance between two paths elements
  *
  * @tparam use_derivatives Use derivatives based global minimum seeking method. Default to true.
@@ -344,7 +171,8 @@ std::pair<double, double> compute_XY_separation(
  */
 template <bool use_derivatives = true>
 std::pair<double, double> compute_XY_separation(
-    const DynamicPathShape &p1, const DynamicPathShape &p2, double duration, double min_sep, double tol,
+    const DynamicPathShape &p1, const DynamicPathShape &p2, const AircraftStats& p1_stats, const AircraftStats& p2_stats,
+    double duration, double min_sep, double tol,
     uint rec = DubinsDistDefaultRec)
 {
     std::pair<double, double> output;
@@ -369,7 +197,7 @@ std::pair<double, double> compute_XY_separation(
     {
         output = temporal_XY_dist<STRAIGHT, STRAIGHT, true>(
             to_static_shape<STRAIGHT>(p1),
-            to_static_shape<STRAIGHT>(p2), duration, tol);
+            to_static_shape<STRAIGHT>(p2), p1_stats, p2_stats, duration, tol);
     }
     else
     {
@@ -389,7 +217,12 @@ std::pair<double, double> compute_XY_separation(
                 // If the geometric test suggests there is a collision in the second half, look at the second half first
                 if (t1 >= duration / 2 && t2 >= duration / 2)
                 {
-                    output = compute_XY_separation(shifted_p1, shifted_p2, duration / 2, min_sep, tol, rec - 1);
+                    AircraftStats shifted_p1_stats = p1_stats;
+                    AircraftStats shifted_p2_stats = p2_stats;
+                    shifted_p1_stats.airspeed = speed_at_time(p1_stats, duration / 2, duration);
+                    shifted_p2_stats.airspeed = speed_at_time(p2_stats, duration / 2, duration);
+
+                    output = compute_XY_separation(shifted_p1, shifted_p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
                     output.first += duration / 2; // Location needs to be corrected due to shifting
 
                     // If the recursive search found a conflict, output it
@@ -400,7 +233,12 @@ std::pair<double, double> compute_XY_separation(
                     // Otherwise, explore the other branch and output the smallest distance value
                     else
                     {
-                        auto output_bis = compute_XY_separation(p1, p2, duration / 2, min_sep, tol, rec - 1);
+                        AircraftStats shifted_p1_stats = p1_stats;
+                        shifted_p1_stats.target_airspeed = speed_at_time(p1_stats, duration / 2, duration);
+                        AircraftStats shifted_p2_stats = p2_stats;
+                        shifted_p2_stats.target_airspeed = speed_at_time(p2_stats, duration / 2, duration);
+
+                        auto output_bis = compute_XY_separation(p1, p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
                         if (output_bis.second < output.second)
                         {
                             return output_bis;
@@ -413,7 +251,12 @@ std::pair<double, double> compute_XY_separation(
                 }
                 else
                 {
-                    output = compute_XY_separation(p1, p2, duration / 2, min_sep, tol, rec - 1);
+                    AircraftStats shifted_p1_stats = p1_stats;
+                    AircraftStats shifted_p2_stats = p2_stats;
+                    shifted_p1_stats.target_airspeed = speed_at_time(p1_stats, duration / 2, duration);
+                    shifted_p2_stats.target_airspeed = speed_at_time(p2_stats, duration / 2, duration);
+
+                    output = compute_XY_separation(p1, p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
 
                     // If the recursive search found a conflict, output it
                     if (output.second < min_sep)
@@ -423,9 +266,14 @@ std::pair<double, double> compute_XY_separation(
                     // Otherwise, explore the other branch and output the smallest distance value
                     else
                     {
-                        auto output_bis = compute_XY_separation(shifted_p1, shifted_p2, duration / 2, min_sep, tol, rec - 1);
+                        AircraftStats shifted_p1_stats = p1_stats;
+                        AircraftStats shifted_p2_stats = p2_stats;
+                        shifted_p1_stats.airspeed = speed_at_time(p1_stats, duration / 2, duration);
+                        shifted_p2_stats.airspeed = speed_at_time(p2_stats, duration / 2, duration);
+
+                        auto output_bis = compute_XY_separation(shifted_p1, shifted_p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
                         output_bis.first += duration / 2; // Location needs to be corrected due to shifting
-                        if (output_bis.second < output.second)
+                        if (output_bis.second < output.second)  
                         {
                             return output_bis;
                         }
@@ -438,7 +286,7 @@ std::pair<double, double> compute_XY_separation(
             }
             else // Otherwise, fallback on temporal method
             {
-                output = temporal_XY_dist<use_derivatives>(p1, p2, duration, tol);
+                output = temporal_XY_dist<use_derivatives>(p1, p2, p1_stats, p2_stats, duration, tol);
             }
         }
         // Otherwise, use the result of the geometric separation
@@ -525,17 +373,6 @@ static std::vector<double> compute_timepoints(const Dubins &p1, const Dubins &p2
     return timepoints;
 }
 
-template <DubinsMove m1, DubinsMove m2>
-static std::pair<double, double> compute_XY_separation_between_trajectories(
-    const Pose3D &start_1, const Pose3D &end_1, double v1, double r1, double h1,
-    const Pose3D &start_2, const Pose3D &end_2, double v2, double r2, double h2,
-    double duration, double min_dist, double tol, uint rec)
-{
-    return compute_XY_separation<m1, m2>(
-        compute_params<m1>(start_1, end_1, v1, r1, h1),
-        compute_params<m2>(start_2, end_2, v2, r2, h2),
-        duration, min_dist, tol, rec);
-}
 
 std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const AircraftStats& this_stats, const AircraftStats& other_stats,
                                                  double duration, double min_dist, double tol, std::optional<double> hotstart, uint rec) const
@@ -553,7 +390,7 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
     if (hotstart.has_value())
     {
         index = binary_search(timepoints, hotstart.value());
-        double duration = timepoints[index + 1] - timepoints[index];
+        double sec_duration = timepoints[index + 1] - timepoints[index];
 
         std::vector<double> times{timepoints[index], timepoints[index + 1]};
 
@@ -564,12 +401,21 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
         std::vector<Pose3D> other_poses = other.get_positions(times, other_stats, true);
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses.front(), curr_poses.back(),
-                                    this_speed, curr_ref_shape.p1, curr_ref_shape.p3);
+                                    1., curr_ref_shape.p1, curr_ref_shape.p3);
 
         DynamicPathShape other_shape(other_ref_shape.m, other_poses.front(), other_poses.back(),
-                                     other_speed, other_ref_shape.p1, other_ref_shape.p3);
+                                     1., other_ref_shape.p1, other_ref_shape.p3);
 
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, duration, min_dist, tol, rec);
+
+        AircraftStats curr_stats    = this_stats;
+        AircraftStats other_stats   = other_stats;
+
+        curr_stats.airspeed  = speed_at_time(this_stats, timepoints[index], duration);
+        other_stats.airspeed = speed_at_time(other_stats, timepoints[index], duration);
+
+        curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[index + 1], duration);
+        other_stats.target_airspeed = speed_at_time(other_stats, timepoints[index + 1], duration);                     
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats,sec_duration, min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {
@@ -598,12 +444,12 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
     for (size_t i = 0; i < timepoints.size() - 1; i++)
     {
         // Update section tracker
-        if (curr_endlocs[curr_sec_index + 1] < timepoints[i + 1] * this_speed * (1 - 1e-6))
+        if (curr_endlocs[curr_sec_index + 1] < length_traveled(this_stats,timepoints[i + 1],duration) * (1 - 1e-6))
         {
             curr_sec_index++;
         }
 
-        if (other_endlocs[other_sec_index + 1] < timepoints[i + 1] * other_speed * (1 - 1e-6))
+        if (other_endlocs[other_sec_index + 1] < length_traveled(other_stats,timepoints[i + 1],duration) * (1 - 1e-6))
         {
             other_sec_index++;
         }
@@ -618,12 +464,21 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
         const DynamicPathShape &other_ref_shape = other.sections[other_sec_index];
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses[i], curr_poses[i + 1],
-                                    this_speed, curr_ref_shape.p1, curr_ref_shape.p3);
+                                    1., curr_ref_shape.p1, curr_ref_shape.p3);
 
         DynamicPathShape other_shape(other_ref_shape.m, other_poses[i], other_poses[i + 1],
-                                     other_speed, other_ref_shape.p1, other_ref_shape.p3);
+                                     1., other_ref_shape.p1, other_ref_shape.p3);
 
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
+        AircraftStats curr_stats    = this_stats;
+        AircraftStats other_stats   = other_stats;
+
+        curr_stats.airspeed  = speed_at_time(this_stats, timepoints[i], duration);
+        other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
+
+        curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[i + 1], duration);
+        other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
+
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {
@@ -665,12 +520,21 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
         std::vector<Pose3D> other_poses = other.get_positions(times, other_stats, true);
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses.front(), curr_poses.back(),
-                                    this_speed, curr_ref_shape.p1, curr_ref_shape.p3);
+                                    1., curr_ref_shape.p1, curr_ref_shape.p3);
 
         DynamicPathShape other_shape(other_ref_shape.m, other_poses.front(), other_poses.back(),
-                                     other_speed, other_ref_shape.p1, other_ref_shape.p3);
+                                     1., other_ref_shape.p1, other_ref_shape.p3);
 
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, duration, min_dist, tol, rec);
+        AircraftStats curr_stats    = this_stats;
+        AircraftStats other_stats   = other_stats;
+
+        curr_stats.airspeed  = speed_at_time(this_stats, times.front(), duration);
+        other_stats.airspeed = speed_at_time(other_stats, times.front(), duration);
+
+        curr_stats.target_airspeed  = speed_at_time(this_stats, times.back(), duration);
+        other_stats.target_airspeed = speed_at_time(other_stats, times.back(), duration);
+
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats, duration, min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {
@@ -695,12 +559,12 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
     for (size_t i = 0; i < timepoints.size() - 1; i++)
     {
         // Update section tracker
-        if (curr_endlocs[curr_sec_index + 1] < timepoints[i + 1] * this_speed * (1 - 1e-6))
+        if (curr_endlocs[curr_sec_index + 1] < length_traveled(this_stats,timepoints[i + 1],duration) * (1 - 1e-6))
         {
             curr_sec_index++;
         }
 
-        if (other_endlocs[other_sec_index + 1] < timepoints[i + 1] * other_speed * (1 - 1e-6))
+        if (other_endlocs[other_sec_index + 1] < length_traveled(other_stats,timepoints[i + 1],duration) * (1 - 1e-6))
         {
             other_sec_index++;
         }
@@ -715,12 +579,21 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
         const DynamicPathShape &other_ref_shape = other.sections[other_sec_index];
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses[i], curr_poses[i + 1],
-                                    this_speed, curr_ref_shape.p1, curr_ref_shape.p3);
+                                    1., curr_ref_shape.p1, curr_ref_shape.p3);
 
         DynamicPathShape other_shape(other_ref_shape.m, other_poses[i], other_poses[i + 1],
-                                     other_speed, other_ref_shape.p1, other_ref_shape.p3);
+                                     1., other_ref_shape.p1, other_ref_shape.p3);
 
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
+        AircraftStats curr_stats    = this_stats;
+        AircraftStats other_stats   = other_stats;
+
+        curr_stats.airspeed  = speed_at_time(this_stats, timepoints[i], duration);
+        other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
+
+        curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[i + 1], duration);
+        other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
+
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {

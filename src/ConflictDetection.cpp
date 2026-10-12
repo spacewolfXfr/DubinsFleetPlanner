@@ -1020,7 +1020,9 @@ std::pair<double,double> temporal_3D_dist(const PathShape<m1> &s1, const PathSha
 
 
 template<bool use_derivatives>
-std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<STRAIGHT> &s2, double duration, [[maybe_unused]] double tol)
+std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<STRAIGHT> &s2,
+    [[maybe_unused]] const AircraftStats& s1_stats, [[maybe_unused]] const AircraftStats& s2_stats,
+    double duration, [[maybe_unused]] double tol)
 {
     Eigen::Vector2d dp(s1.x - s2.x, s1.y - s2.y);
     Eigen::Vector2d v1(s1.p1, s1.p2);
@@ -1060,7 +1062,9 @@ std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const P
 }
 
 template<DubinsMove m, bool use_derivatives> requires (m != STRAIGHT)
-std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<m> &s2, double duration, double tol)
+std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<m> &s2,
+    [[maybe_unused]] const AircraftStats& s1_stats, [[maybe_unused]] const AircraftStats& s2_stats,
+    double duration, double tol)
 {
     typedef OptimizationRounding::fast_rounding<double> Policies;
 
@@ -1101,14 +1105,17 @@ std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const P
 }
 
 template<DubinsMove m, bool use_derivatives> requires (m != STRAIGHT)
-std::pair<double,double> temporal_XY_dist(const PathShape<m> &s1, const PathShape<STRAIGHT> &s2, double duration, double tol)
+std::pair<double,double> temporal_XY_dist(const PathShape<m> &s1, const PathShape<STRAIGHT> &s2,
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<m,use_derivatives>(s2,s1,duration,tol);
+    return temporal_XY_dist<m,use_derivatives>(s2,s1,s2_stats,s1_stats,duration,tol);
 }
 
 
 template<DubinsMove m1, DubinsMove m2, bool use_derivatives> requires ((m1!=STRAIGHT) && (m2!=STRAIGHT))
-std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2, double duration, double tol)
+std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2,
+    [[maybe_unused]] const AircraftStats& s1_stats, [[maybe_unused]] const AircraftStats& s2_stats,
+    double duration, double tol)
 {
     typedef OptimizationRounding::fast_rounding<double> Policies;
 
@@ -1149,60 +1156,62 @@ std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathSha
 }
 
 // Explicitely declare all possible specializations
-template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,STRAIGHT,false>(const PathShape<STRAIGHT>& s1, const PathShape<STRAIGHT>& s2, double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,STRAIGHT,false>(const PathShape<STRAIGHT>& s1, const PathShape<STRAIGHT>& s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<false>(s1,s2,duration,tol);
+    return temporal_XY_dist<false>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,STRAIGHT,true> (const PathShape<STRAIGHT>& s1, const PathShape<STRAIGHT>& s2, double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,STRAIGHT,true> (const PathShape<STRAIGHT>& s1, const PathShape<STRAIGHT>& s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<true>(s1,s2,duration,tol);
+    return temporal_XY_dist<true>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,LEFT,true>     (const PathShape<STRAIGHT>& s1, const PathShape<LEFT>& s2   , double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,LEFT,true>     (const PathShape<STRAIGHT>& s1, const PathShape<LEFT>& s2   , const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<LEFT,true>(s1,s2,duration,tol);
+    return temporal_XY_dist<LEFT,true>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,LEFT,false>    (const PathShape<STRAIGHT>& s1, const PathShape<LEFT>& s2   , double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,LEFT,false>    (const PathShape<STRAIGHT>& s1, const PathShape<LEFT>& s2   , const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<LEFT,false>(s1,s2,duration,tol);
+    return temporal_XY_dist<LEFT,false>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,RIGHT,true>    (const PathShape<STRAIGHT>& s1, const PathShape<RIGHT>& s2  , double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,RIGHT,true>    (const PathShape<STRAIGHT>& s1, const PathShape<RIGHT>& s2  , const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<RIGHT,true>(s1,s2,duration,tol);
+    return temporal_XY_dist<RIGHT,true>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,RIGHT,false>   (const PathShape<STRAIGHT>& s1, const PathShape<RIGHT>& s2  , double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<STRAIGHT,RIGHT,false>   (const PathShape<STRAIGHT>& s1, const PathShape<RIGHT>& s2  , const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<RIGHT,false>(s1,s2,duration,tol);
+    return temporal_XY_dist<RIGHT,false>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<LEFT,STRAIGHT,true>     (const PathShape<LEFT>& s1    , const PathShape<STRAIGHT>& s2, double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<LEFT,STRAIGHT,true>     (const PathShape<LEFT>& s1    , const PathShape<STRAIGHT>& s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<LEFT,true>(s1,s2,duration,tol);
+    return temporal_XY_dist<LEFT,true>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<LEFT,STRAIGHT,false>    (const PathShape<LEFT>& s1    , const PathShape<STRAIGHT>& s2, double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<LEFT,STRAIGHT,false>    (const PathShape<LEFT>& s1    , const PathShape<STRAIGHT>& s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<LEFT,false>(s1,s2,duration,tol);
+    return temporal_XY_dist<LEFT,false>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<RIGHT,STRAIGHT,true>    (const PathShape<RIGHT>& s1   , const PathShape<STRAIGHT>& s2, double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<RIGHT,STRAIGHT,true>    (const PathShape<RIGHT>& s1   , const PathShape<STRAIGHT>& s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<RIGHT,true>(s1,s2,duration,tol);
+    return temporal_XY_dist<RIGHT,true>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
-template<> std::pair<double,double> temporal_XY_dist<RIGHT,STRAIGHT,false>   (const PathShape<RIGHT>& s1   , const PathShape<STRAIGHT>& s2, double duration, double tol)
+template<> std::pair<double,double> temporal_XY_dist<RIGHT,STRAIGHT,false>   (const PathShape<RIGHT>& s1   , const PathShape<STRAIGHT>& s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol)
 {
-    return temporal_XY_dist<RIGHT,false>(s1,s2,duration,tol);
+    return temporal_XY_dist<RIGHT,false>(s1,s2,s1_stats,s2_stats,duration,tol);
 }
 
 
-template std::pair<double,double> temporal_XY_dist<LEFT,LEFT,true>         (const PathShape<LEFT>&     , const PathShape<LEFT>&    , double, double);
-template std::pair<double,double> temporal_XY_dist<LEFT,LEFT,false>        (const PathShape<LEFT>&     , const PathShape<LEFT>&    , double, double);
-template std::pair<double,double> temporal_XY_dist<RIGHT,LEFT,true>        (const PathShape<RIGHT>&    , const PathShape<LEFT>&    , double, double);
-template std::pair<double,double> temporal_XY_dist<RIGHT,LEFT,false>       (const PathShape<RIGHT>&    , const PathShape<LEFT>&    , double, double);
-template std::pair<double,double> temporal_XY_dist<LEFT,RIGHT,true>        (const PathShape<LEFT>&     , const PathShape<RIGHT>&   , double, double);
-template std::pair<double,double> temporal_XY_dist<LEFT,RIGHT,false>       (const PathShape<LEFT>&     , const PathShape<RIGHT>&   , double, double);
-template std::pair<double,double> temporal_XY_dist<RIGHT,RIGHT,true>       (const PathShape<RIGHT>&    , const PathShape<RIGHT>&   , double, double);
-template std::pair<double,double> temporal_XY_dist<RIGHT,RIGHT,false>      (const PathShape<RIGHT>&    , const PathShape<RIGHT>&   , double, double);
+template std::pair<double,double> temporal_XY_dist<LEFT,LEFT,true>         (const PathShape<LEFT>&, const PathShape<LEFT>&, const AircraftStats&, const AircraftStats&, double, double);
+template std::pair<double,double> temporal_XY_dist<LEFT,LEFT,false>        (const PathShape<LEFT>&, const PathShape<LEFT>&, const AircraftStats&, const AircraftStats&, double, double);
+template std::pair<double,double> temporal_XY_dist<RIGHT,LEFT,true>        (const PathShape<RIGHT>&, const PathShape<LEFT>&, const AircraftStats&, const AircraftStats&, double, double);
+template std::pair<double,double> temporal_XY_dist<RIGHT,LEFT,false>       (const PathShape<RIGHT>&, const PathShape<LEFT>&, const AircraftStats&, const AircraftStats&, double, double);
+template std::pair<double,double> temporal_XY_dist<LEFT,RIGHT,true>        (const PathShape<LEFT>&, const PathShape<RIGHT>&, const AircraftStats&, const AircraftStats&, double, double);
+template std::pair<double,double> temporal_XY_dist<LEFT,RIGHT,false>       (const PathShape<LEFT>&, const PathShape<RIGHT>&, const AircraftStats&, const AircraftStats&, double, double);
+template std::pair<double,double> temporal_XY_dist<RIGHT,RIGHT,true>       (const PathShape<RIGHT>&, const PathShape<RIGHT>&, const AircraftStats&, const AircraftStats&, double, double);
+template std::pair<double,double> temporal_XY_dist<RIGHT,RIGHT,false>      (const PathShape<RIGHT>&, const PathShape<RIGHT>&, const AircraftStats&, const AircraftStats&, double, double);
 
 
 template<bool use_derivatives>
-std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const DynamicPathShape &s2, double duration, double tol)
+std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const DynamicPathShape &s2,
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats,
+    double duration, double tol)
 {
     switch (s1.m)
     {
@@ -1213,6 +1222,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<STRAIGHT,STRAIGHT,use_derivatives>(
                 to_static_shape<STRAIGHT>(s1),
                 to_static_shape<STRAIGHT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
 
@@ -1220,6 +1230,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<STRAIGHT,LEFT,use_derivatives>(
                 to_static_shape<STRAIGHT>(s1),
                 to_static_shape<LEFT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
             break;
@@ -1228,6 +1239,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<STRAIGHT,RIGHT,use_derivatives>(
                 to_static_shape<STRAIGHT>(s1),
                 to_static_shape<RIGHT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
             break;
@@ -1245,6 +1257,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<LEFT,STRAIGHT,use_derivatives>(
                 to_static_shape<LEFT>(s1),
                 to_static_shape<STRAIGHT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
 
@@ -1252,6 +1265,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<LEFT,LEFT,use_derivatives>(
                 to_static_shape<LEFT>(s1),
                 to_static_shape<LEFT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
             break;
@@ -1260,6 +1274,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<LEFT,RIGHT,use_derivatives>(
                 to_static_shape<LEFT>(s1),
                 to_static_shape<RIGHT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
             break;
@@ -1277,6 +1292,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<RIGHT,STRAIGHT,use_derivatives>(
                 to_static_shape<RIGHT>(s1),
                 to_static_shape<STRAIGHT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
 
@@ -1284,6 +1300,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<RIGHT,LEFT,use_derivatives>(
                 to_static_shape<RIGHT>(s1),
                 to_static_shape<LEFT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
             break;
@@ -1292,6 +1309,7 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
             return temporal_XY_dist<RIGHT,RIGHT,use_derivatives>(
                 to_static_shape<RIGHT>(s1),
                 to_static_shape<RIGHT>(s2),
+                s1_stats, s2_stats,
                 duration, tol
             );
             break;
@@ -1308,8 +1326,8 @@ std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const Dyna
     }
 }
 
-template std::pair<double,double> temporal_XY_dist<true>(const DynamicPathShape &s1, const DynamicPathShape &s2, double duration, double tol);
-template std::pair<double,double> temporal_XY_dist<false>(const DynamicPathShape &s1, const DynamicPathShape &s2, double duration, double tol);
+template std::pair<double,double> temporal_XY_dist<true>(const DynamicPathShape &s1, const DynamicPathShape &s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol);
+template std::pair<double,double> temporal_XY_dist<false>(const DynamicPathShape &s1, const DynamicPathShape &s2, const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol);
 
 
 template<DubinsMove m1, DubinsMove m2>

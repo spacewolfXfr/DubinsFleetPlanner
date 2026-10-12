@@ -28,10 +28,10 @@ TEST(TemporalDistance,SolverDistanceDoubleCheckNoDerivatives)
         PathShape<RIGHT>    r   = generate_random_shape<RIGHT>    (4*i+3, TEST_POS_RANGE, TEST_SPEED_RANGE);
         std::cout << "Random shapes generation n°" << i << " done" << std::endl;
 
-        std::pair<double,double> test_ss_no_der = temporal_XY_dist<STRAIGHT,STRAIGHT,false>  (s,sbis,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_ss_no_der = temporal_XY_dist<STRAIGHT,STRAIGHT,false>  (s,sbis,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
 
         Pose3D ss_p1 = follow_dubins(s      ,test_ss_no_der.first);
         Pose3D ss_p2 = follow_dubins(sbis   ,test_ss_no_der.first);
@@ -62,10 +62,10 @@ TEST(TemporalDistance,SolverDistanceDoubleCheckWithDerivatives)
         PathShape<RIGHT>    r   = generate_random_shape<RIGHT>    (4*i+3, TEST_POS_RANGE, TEST_SPEED_RANGE);
         std::cout << "Random shapes generation n°" << i << " done" << std::endl;
 
-        std::pair<double,double> test_ss_with_der = temporal_XY_dist<STRAIGHT,STRAIGHT,true>  (s,sbis,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sl_with_der = temporal_XY_dist<STRAIGHT,LEFT,true>  (s,l,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sr_with_der = temporal_XY_dist<STRAIGHT,RIGHT,true> (s,r,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_lr_with_der = temporal_XY_dist<LEFT,RIGHT,true>     (l,r,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_ss_with_der = temporal_XY_dist<STRAIGHT,STRAIGHT,true>  (s,sbis,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sl_with_der = temporal_XY_dist<STRAIGHT,LEFT,true>  (s,l,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sr_with_der = temporal_XY_dist<STRAIGHT,RIGHT,true> (s,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_lr_with_der = temporal_XY_dist<LEFT,RIGHT,true>     (l,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
 
         Pose3D ss_p1 = follow_dubins(s      ,test_ss_with_der.first);
         Pose3D ss_p2 = follow_dubins(sbis   ,test_ss_with_der.first);
@@ -107,10 +107,10 @@ TEST(TemporalDistance,Random2DCasesNoDerivatives)
         std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
-        std::pair<double,double> test_ss_no_der = temporal_XY_dist<STRAIGHT,STRAIGHT,false>  (s,sbis,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_ss_no_der = temporal_XY_dist<STRAIGHT,STRAIGHT,false>  (s,sbis,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
 
         EXPECT_NEAR(sampled_ss.first,test_ss_no_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-STRAIGHT loc error (sampled vs no derivative)";
         EXPECT_NEAR(sampled_sl.first,test_sl_no_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-LEFT loc error (sampled vs no derivative)";
@@ -145,10 +145,10 @@ TEST(TemporalDistance,Random2DCasesWithDerivatives)
         std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
-        std::pair<double,double> test_ss_with_der = temporal_XY_dist<STRAIGHT,STRAIGHT,true>  (s,sbis,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sl_with_der = temporal_XY_dist<STRAIGHT,LEFT,true>  (s,l,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sr_with_der = temporal_XY_dist<STRAIGHT,RIGHT,true> (s,r,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_lr_with_der = temporal_XY_dist<LEFT,RIGHT,true>     (l,r,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_ss_with_der = temporal_XY_dist<STRAIGHT,STRAIGHT,true>  (s,sbis,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sl_with_der = temporal_XY_dist<STRAIGHT,LEFT,true>  (s,l,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sr_with_der = temporal_XY_dist<STRAIGHT,RIGHT,true> (s,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_lr_with_der = temporal_XY_dist<LEFT,RIGHT,true>     (l,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
 
         EXPECT_NEAR(sampled_ss.first,test_ss_with_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-STRAIGHT loc error (sampled vs with derivative)";
         EXPECT_NEAR(sampled_sl.first,test_sl_with_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-LEFT loc error (sampled vs with derivative)";
@@ -183,10 +183,10 @@ TEST(TemporalDistance,Random2DDynamicCasesNoDerivatives)
         std::pair<double,double> sampled_lr = sample_temporal_XY_dist<samples>  (l,r,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
-        std::pair<double,double> test_ss_no_der = temporal_XY_dist<false>  (s,sbis,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sl_no_der = temporal_XY_dist<false>  (s,l,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sr_no_der = temporal_XY_dist<false>  (s,r,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_lr_no_der = temporal_XY_dist<false>  (l,r,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_ss_no_der = temporal_XY_dist<false>  (s,sbis,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sl_no_der = temporal_XY_dist<false>  (s,l,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sr_no_der = temporal_XY_dist<false>  (s,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_lr_no_der = temporal_XY_dist<false>  (l,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
 
         EXPECT_NEAR(sampled_ss.first,test_ss_no_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-STRAIGHT loc error (sampled vs no derivative)";
         EXPECT_NEAR(sampled_sl.first,test_sl_no_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-LEFT loc error (sampled vs no derivative)";
@@ -221,10 +221,10 @@ TEST(TemporalDistance,Random2DDynamicCasesWithDerivatives)
         std::pair<double,double> sampled_lr = sample_temporal_XY_dist<samples>  (l,r,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
-        std::pair<double,double> test_ss_with_der = temporal_XY_dist<true>  (s,sbis,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sl_with_der = temporal_XY_dist<true>  (s,l,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_sr_with_der = temporal_XY_dist<true>  (s,r,TEST_PATH_DURATION,TEST_PRECISION);
-        std::pair<double,double> test_lr_with_der = temporal_XY_dist<true>  (l,r,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_ss_with_der = temporal_XY_dist<true>  (s,sbis,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sl_with_der = temporal_XY_dist<true>  (s,l,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_sr_with_der = temporal_XY_dist<true>  (s,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
+        std::pair<double,double> test_lr_with_der = temporal_XY_dist<true>  (l,r,TEST_AIRCRAFT_STATS,TEST_AIRCRAFT_STATS,TEST_PATH_DURATION,TEST_PRECISION);
 
         EXPECT_NEAR(sampled_ss.first,test_ss_with_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-STRAIGHT loc error (sampled vs with derivative)";
         EXPECT_NEAR(sampled_sl.first,test_sl_with_der.first,DubinsFleetPlanner_PRECISION) << "STRAIGHT-LEFT loc error (sampled vs with derivative)";

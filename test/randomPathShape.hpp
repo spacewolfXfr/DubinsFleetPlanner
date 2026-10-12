@@ -208,7 +208,7 @@ std::pair<double,double> sample_temporal_XY_dist(const DynamicPathShape& s1, con
 
 template<size_t samples>
 std::pair<double,double> sample_temporal_XY_dist(const Dubins& s1, const Dubins& s2,
-    double v1, double v2, double duration)
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration)
 {
     static_assert(samples > 1);
     Pose3D p1,p2;
@@ -229,8 +229,8 @@ std::pair<double,double> sample_temporal_XY_dist(const Dubins& s1, const Dubins&
         timestamps.push_back(i*duration/(samples-1));
     }
 
-    auto s1_samples = s1.get_positions(timestamps,v1,true);
-    auto s2_samples = s2.get_positions(timestamps,v2,true);
+    auto s1_samples = s1.get_positions(timestamps,s1_stats,true);
+    auto s2_samples = s2.get_positions(timestamps,s2_stats,true);
 
     for(size_t i = 0; i < samples; i++)
     {

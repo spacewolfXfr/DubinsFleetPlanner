@@ -20,7 +20,7 @@
 
 template<size_t samples>
 void sample_test_dubins_separation(const Dubins& d1, const Dubins& d2, 
-    double v1, double v2, 
+    const AircraftStats& v1, const AircraftStats& v2, 
     double duration, double separation, double tol,
     uint rec,
     std::string expect_msg = "",
@@ -64,8 +64,8 @@ void check_all_dubins_pairs(
         {
             auto& d2 = ds2[i2];
             std::string msg = expect_msg + " using 1: " + d1->get_type_abbr() + " and 2: " + d2->get_type_abbr();
-            double duration = std::min(d1->get_length()/p1_speed,d2->get_length()/p2_speed);
-            sample_test_dubins_separation<TEST_SAMPLES_COUNT>(*d1,*d2,p1_speed,p2_speed,duration,min_sep,tol,rec,msg,no_test);
+            double duration = std::min(d1->get_duration(p1_stats)/p1_speed,d2->get_duration(p2_stats)/p2_speed);
+            sample_test_dubins_separation<TEST_SAMPLES_COUNT>(*d1,*d2,p1_stats,p2_stats,duration,min_sep,tol,rec,msg,no_test);
         }
     }
 }

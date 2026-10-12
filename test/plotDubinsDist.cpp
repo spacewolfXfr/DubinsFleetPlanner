@@ -120,15 +120,15 @@ int main()
         {
             auto& d2 = p2_possibilities[i2];
 
-            double duration = std::min(d1->get_length()/ac10_stats.airspeed,d2->get_length()/ac13_stats.airspeed);
+            double duration = std::min(d1->get_duration(ac10_stats),d2->get_duration(ac13_stats));
 
             std::cout << "Checking for pair " << d1->get_type_abbr() << " " << d2->get_type_abbr() << "...";
-            if (d1->is_XY_separated_from(*d2,ac10_stats.airspeed,ac13_stats.airspeed,duration,min_separation))
+            if (d1->is_XY_separated_from(*d2,ac10_stats,ac13_stats,duration,min_separation))
             {
                 std::cout << " Valid!" << std::endl
                     << "  Checking by sampling...";
 
-                std::pair<double,double> sampled = sample_temporal_XY_dist<samples>(*d1,*d2,ac10_stats.airspeed,ac13_stats.airspeed,duration);
+                std::pair<double,double> sampled = sample_temporal_XY_dist<samples>(*d1,*d2,ac10_stats,ac13_stats,duration);
 
                 if (sampled.second > min_separation)
                 {

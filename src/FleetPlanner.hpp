@@ -151,11 +151,11 @@ void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<Ai
 
                 if (delay > DubinsFleetPlanner_PRECISION)
                 {
-                    if (delay > p.get_duration(s.airspeed))
+                    if (delay > p.get_duration(s))
                     {
                         continue;
                     }
-                    const Dubins& p_followed = p.follow_for(delay * s.airspeed);
+                    const Dubins& p_followed = p.follow_for(delay, s);
                     res = generic_compute_distance<distance_function>(p_followed,c,s,cs,min_sep);
                 }
                 else
@@ -391,8 +391,6 @@ protected:
             return true;
         }
 
-        double this_speed = stats[current_index].airspeed;
-
         for(uint i = 0; i < all_paths[current_index].size(); i++)
         {
             // Take a possible path
@@ -411,7 +409,6 @@ protected:
                 {
                     // Check if there is a conflict with a set path
                     auto& other = all_paths[past_index][choices[past_index]];
-                    double other_speed = stats[past_index].airspeed;
 
                     // Look first in the memo dictionnary
                     Conflict_T ccase = std::make_tuple(
@@ -423,10 +420,10 @@ protected:
                     if (case_it == conflicts_memo.end()) // If not found, compute and store
                     {
                         double duration = std::min(
-                            dubin->get_length()/this_speed,
-                            other->get_length()/other_speed);
+                            dubin->get_duration(stats[current_index]),
+                            other->get_duration(stats[past_index]));
 
-                        conflict_with_existing = !separation_function(*dubin,*other,this_speed,other_speed,duration,min_sep,precision_tol,DubinsDistDefaultRec);
+                        conflict_with_existing = !separation_function(*dubin,*other,stats[current_index],stats[past_index],duration,min_sep,precision_tol,DubinsDistDefaultRec);
                         conflicts_memo.insert({ccase,conflict_with_existing});
                     }
                     else    // Otherwise, simply retrieve the value
@@ -1322,7 +1319,7 @@ public:
             for(const auto& d : sol)
             {
                 const auto& s = stats[i];
-                max_duration = std::max(max_duration,d.get_duration(s.airspeed));
+                max_duration = std::max(max_duration,d.get_duration(s));
                 i++;
             }
             extra.final_path_time = max_duration;

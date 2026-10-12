@@ -91,20 +91,20 @@ namespace Visualisation
     }
 
     template<unsigned samples>
-    DrawSpecs& plot_path(Plot2D& plot, const Dubins& path,  double speed, double wind_x, double wind_y)
+    DrawSpecs& plot_path(Plot2D& plot, const Dubins& path, const AircraftStats& stats, double wind_x, double wind_y)
     {
         static_assert(samples > 1);
         
         std::valarray<double> xs(samples),ys(samples);
-        double len = path.get_length();
-        auto lens = linspace(0,len,samples);
-        std::vector<double> lens_vec{std::begin(lens),std::end(lens)};
-        std::vector<Pose3D> poses = path.get_positions(lens_vec,true);
+        double duration = path.get_duration(stats);
+        auto times = linspace(0,duration,samples);
+        std::vector<double> time_vec{std::begin(times),std::end(times)};
+        std::vector<Pose3D> poses = path.get_positions(time_vec,stats,true);
 
         for(unsigned i = 0; i < samples; i++)
         {
-            xs[i] = poses[i].x + wind_x*lens_vec[i]/speed;
-            ys[i] = poses[i].y + wind_y*lens_vec[i]/speed;
+            xs[i] = poses[i].x + wind_x*time_vec[i];
+            ys[i] = poses[i].y + wind_y*time_vec[i];
         }
 
         return plot.drawCurve(xs,ys);
@@ -183,8 +183,8 @@ namespace Visualisation
         for(uint i = 0; i < N; i++)
         {
             const auto& d = dubins[i];
-            max_time = std::max(max_time, d.get_duration(stats[i].airspeed));
-            Visualisation::plot_path<samples>(plot,d, stats[i].airspeed, wind_x, wind_y)
+            max_time = std::max(max_time, d.get_duration(stats[i]));
+            Visualisation::plot_path<samples>(plot,d, stats[i], wind_x, wind_y)
                 .label(std::to_string(i) + std::string(": ") + d.get_type_abbr() + std::format(" ( {:.3f} )",d.get_length()))
                 .lineColor(Visualisation::get_color(i));
 
@@ -193,8 +193,8 @@ namespace Visualisation
                 .lineColor(Visualisation::get_color(i));
 
             Pose3D airref_end = d.get_end();
-            airref_end.x += wind_x*d.get_length()/stats[i].airspeed;
-            airref_end.y += wind_y*d.get_length()/stats[i].airspeed;
+            airref_end.x += wind_x*d.get_duration(stats[i]);
+            airref_end.y += wind_y*d.get_duration(stats[i]);
             Visualisation::plot_pose(plot,airref_end)
                 .labelNone()//.label(std::to_string(i) + std::string(": End"))
                 .lineColor(Visualisation::get_color(i));
@@ -212,13 +212,13 @@ namespace Visualisation
             std::vector<Pose3D> poses(N);
             for(uint j = 0; j < N; j++)
             {
-                if (ctime > dubins[j].get_duration(stats[j].airspeed))
+                if (ctime > dubins[j].get_duration(stats[j]))
                 {
                     poses[j] = UndefPose;
                 }
                 else
                 {
-                    poses[j] = dubins[j].get_position(ctime,stats[j].airspeed);
+                    poses[j] = dubins[j].get_position(ctime,stats[j]);
                 }
             }
 
@@ -236,8 +236,8 @@ namespace Visualisation
         }
 
 
-        Pose3D p1 = dubins[ac_id_1].get_position(min_dist_time,stats[ac_id_1].airspeed);
-        Pose3D p2 = dubins[ac_id_2].get_position(min_dist_time,stats[ac_id_2].airspeed);
+        Pose3D p1 = dubins[ac_id_1].get_position(min_dist_time,stats[ac_id_1]);
+        Pose3D p2 = dubins[ac_id_2].get_position(min_dist_time,stats[ac_id_2]);
 
         Visualisation::plot_line(plot,
                     p1.x+wind_x*min_dist_time,

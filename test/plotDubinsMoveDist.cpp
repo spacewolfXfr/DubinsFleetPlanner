@@ -54,6 +54,7 @@ int main()
     PathShape<STRAIGHT> s = generate_random_shape<STRAIGHT> (0, TEST_POS_RANGE, TEST_SPEED_RANGE);
     PathShape<LEFT>     l = generate_random_shape<LEFT>     (1, TEST_POS_RANGE, TEST_SPEED_RANGE);
     PathShape<RIGHT>    r = generate_random_shape<RIGHT>    (2, TEST_POS_RANGE, TEST_SPEED_RANGE);
+    const AircraftStats test_stats{0, 1., 1., 1., 0., 0., 0.};
     std::cout << "Random shapes generation done" << std::endl;
 
     std::cout << "Path s speed: " << path_planar_speed(s) << std::endl; 
@@ -80,15 +81,15 @@ int main()
 
     // -------------------- Test solver -------------------- //
 
-    std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,TEST_PATH_DURATION,TEST_PRECISION);
+    std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,test_stats,test_stats,TEST_PATH_DURATION,TEST_PRECISION);
     Pose3D test_sl_no_der_pose1 = follow_dubins(s,test_sl_no_der.first);
     Pose3D test_sl_no_der_pose2 = follow_dubins(l,test_sl_no_der.first);
 
-    std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,TEST_PATH_DURATION,TEST_PRECISION);
+    std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,test_stats,test_stats,TEST_PATH_DURATION,TEST_PRECISION);
     Pose3D test_sr_no_der_pose1 = follow_dubins(s,test_sr_no_der.first);
     Pose3D test_sr_no_der_pose2 = follow_dubins(r,test_sr_no_der.first);
 
-    std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,TEST_PATH_DURATION,TEST_PRECISION);
+    std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,test_stats,test_stats,TEST_PATH_DURATION,TEST_PRECISION);
     Pose3D test_lr_no_der_pose1 = follow_dubins(l,test_lr_no_der.first);
     Pose3D test_lr_no_der_pose2 = follow_dubins(r,test_lr_no_der.first);
 

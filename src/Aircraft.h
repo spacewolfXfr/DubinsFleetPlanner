@@ -40,6 +40,17 @@ typedef struct {
 double length_traveled(const AircraftStats& stats, double t, double trajectory_duration);
 
 /**
+ * @brief Compute the speed of an aircraft at a given time, assuming linearly changing speed according to the aircraft's stats.
+ * 
+ * @param stats Aircraft stats
+ * @param t     Time
+ * @param trajectory_duration Total duration of the followed trajectory
+ * @return double Speed along the trajectory at time t
+ */
+double speed_at_time(const AircraftStats& stats, double t, double trajectory_duration);
+
+
+/**
  * @brief Compute the time required to travel a given length, assuming linearly changing speed according to the aircraft's stats.
  * 
  * @param stats Aircraft stats

@@ -754,7 +754,7 @@ void DubinsPP::OutputPrinter::print_paths_as_CSV(std::ostream& s,
     
     for(uint i = 0; i < N; i++)
     {
-        pts_storages[i] = paths[i].get_positions(times,stats[i].airspeed,true);
+        pts_storages[i] = paths[i].get_positions(times,stats[i],true);
     }
 
     // Print data
