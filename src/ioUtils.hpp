@@ -80,9 +80,14 @@ namespace DubinsPP
         /**
          * @brief Parse an input stream reading a CSV formatted for a path planning data into the matching data
          * 
-         * The first line (header) should exactly as follow:
+         * The first line (header) must contain these columns:
          * ac_id,start_x,start_y,start_z,start_theta,end_x,end_y,end_z,end_theta,airspeed,climb,turn_radius,dt
          * 
+         * It may also contain target_airspeed, min_acceleration, and
+         * max_acceleration columns. If omitted, they default to airspeed, 0,
+         * and 0 respectively. Other columns after dt are interpreted as
+         * timeslots.
+         *
          * The expected types are:
          * int (positive),float,float,float,float   ,float,float,float,float    ,float (positive),float,float (positive),float
          * 

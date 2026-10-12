@@ -21,7 +21,10 @@
 
 typedef struct {
     int id;             // A numeric ID
-    double airspeed;    // Constant airspeed, in m/s
-    double turn_radius; // Minimal turn radius, in m
-    double climb;       // Climb rate, in [alt]/s (with [alt] some unit for altitude; meters above sea level, feets above ground...)
+    double airspeed;    // Current airspeed, in [length]/[time]
+    double target_airspeed; // Airspeed at trajectory end, in [length]/[time]
+    double turn_radius; // Minimal turn radius, in [length]
+    double climb;       // Climb rate, in [altitude]/s (with [altitude] some unit for altitude; meters above sea level, feets above ground...)
+    double min_acceleration; // Minimal acceleration (horizontal, along the path). Default to zero.
+    double max_acceleration; // Maximal acceleration (horizontal, along the path). Default to zero.
 } AircraftStats;

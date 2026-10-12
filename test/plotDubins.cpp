@@ -36,7 +36,7 @@ int main()
     double target_l = 15;
     double tol = 1e-6;
 
-    auto candidates = fit_possible_baseDubins(stats.climb,stats.turn_radius,start,end, target_l, tol);
+    auto candidates = fit_possible_baseDubins(stats,start,end, target_l, tol);
     auto more_candidates = generate_line_extended_base(start,end,stats.climb,stats.turn_radius, target_l, tol,
         {0,0.5,1.});
 

@@ -95,10 +95,17 @@ A `Stats` object:
 {
    "id"         : (Int Number  : aircraft id),
    "airspeed"   : (Float Number: aircraft speed in air referential),
+   "target_airspeed": (Float Number: aircraft speed at trajectory end),
    "climb"      : (Float Number: aircraft climb rate),
    "turn_radius": (Float Number: aircraft minimal turn radius),
+   "min_acceleration": (Float Number: minimal horizontal acceleration along the path),
+   "max_acceleration": (Float Number: maximal horizontal acceleration along the path),
 }
 ```
+
+For backwards compatibility, `target_airspeed` defaults to `airspeed` and both
+acceleration bounds default to `0` when they are omitted from JSON. The CSV input
+format does not have columns for these fields, so it uses the same defaults.
 
 A `Path` object:
 
@@ -136,11 +143,16 @@ Regarding the geometric obstacles (the `-G` option), the JSON file is expected t
 ## Input CSV format
 
 The fleet path planning problem is expected to be described as a CSV file, separated with semi-colons.
-The first 13 columns must match:
+The header must contain these columns:
 
 ```text
 ac_id;start_x;start_y;start_z;start_theta;end_x;end_y;end_z;end_theta;airspeed;climb;turn_radius;dt
 ```
+
+The optional aircraft-performance columns `target_airspeed`, `min_acceleration`,
+and `max_acceleration` may also be included in the header. They are read by name,
+so they may be placed anywhere in the header. When omitted, `target_airspeed`
+defaults to `airspeed` and both acceleration bounds default to `0`.
 
 These fields describe, for each aircraft:
 
@@ -152,7 +164,10 @@ These fields describe, for each aircraft:
 - `turn_radius`: positive minimum turn radius.
 - `dt`: arrival-time difference from the previous aircraft (ignored for the first aircraft).
 
-Any extra columns are interpreted as per-aircraft timeslots. If at least one aircraft has timeslots, the solver uses timeslot mode; otherwise it uses delta-time mode from `dt`.
+Any extra columns after `dt`, other than the optional aircraft-performance
+columns, are interpreted as per-aircraft timeslots. If at least one aircraft has
+timeslots, the solver uses timeslot mode; otherwise it uses delta-time mode from
+`dt`.
 
 > Note: core conflict handling is currently XY-focused. Z values are parsed and propagated but are not treated as a full 3D separation model.
 

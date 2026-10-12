@@ -78,10 +78,10 @@ bool fit_and_test_dubins(
     std::string expect_msg = "",
     bool no_test=false)
 {
-    std::vector<std::unique_ptr<Dubins>> p1_possibilities = fit_possible_baseDubins(p1_stats.climb,p1_stats.turn_radius,
+    std::vector<std::unique_ptr<Dubins>> p1_possibilities = fit_possible_baseDubins(p1_stats,
             p1_start, p1_end, p1_len, tol);
 
-    std::vector<std::unique_ptr<Dubins>> p2_possibilities = fit_possible_baseDubins(p2_stats.climb,p2_stats.turn_radius,
+    std::vector<std::unique_ptr<Dubins>> p2_possibilities = fit_possible_baseDubins(p2_stats,
             p2_start, p2_end, p2_len, tol);
 
     if (p1_possibilities.size() == 0)
@@ -186,8 +186,8 @@ static void generate_and_test_dubins_sep(AircraftStats a1, AircraftStats a2, dou
 class DubinsSeparation : public testing::TestWithParam<uint>
 {
 protected:
-    AircraftStats a1{1,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB};
-    AircraftStats a2{2,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB};
+    AircraftStats a1{1,1.,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB,0.,0.};
+    AircraftStats a2{2,1.,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB,0.,0.};
 
     double min_separation = TEST_MIN_SEPARATION;
 
@@ -287,8 +287,8 @@ TEST(DubinsSeparation,SelectedCase1)
     double target_length_1 = 59.302868877849335;
     double target_length_2 = 59.302868877849335;
 
-    AircraftStats a1{1,p1_speed,p1_turn_radius,p1_climb};
-    AircraftStats a2{2,p2_speed,p2_turn_radius,p2_climb};
+    AircraftStats a1{1,p1_speed,p1_speed,p1_turn_radius,p1_climb,0.,0.};
+    AircraftStats a2{2,p2_speed,p2_speed,p2_turn_radius,p2_climb,0.,0.};
 
 
     fit_and_test_dubins<TEST_SAMPLES_COUNT>(

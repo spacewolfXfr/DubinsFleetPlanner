@@ -91,7 +91,50 @@ namespace {
         p.length= j.at("length");
     }
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(AircraftStats,id,airspeed,climb,turn_radius);
+    void to_json(json& j, const AircraftStats& s)
+    {
+        j = json{
+            {"id"               ,s.id},
+            {"airspeed"         ,s.airspeed},
+            {"target_airspeed"  ,s.target_airspeed},
+            {"climb"            ,s.climb},
+            {"turn_radius"      ,s.turn_radius},
+            {"min_acceleration" ,s.min_acceleration},
+            {"max_acceleration" ,s.max_acceleration}
+        };
+    }
+
+    void from_json(const json& j, AircraftStats& s)
+    {
+        s.id               = j.at("id");
+        s.airspeed         = j.at("airspeed");
+        s.climb            = j.at("climb");
+        s.turn_radius      = j.at("turn_radius");
+        try
+        {
+            s.target_airspeed  = j.at("target_airspeed");
+        }
+        catch (nlohmann::json::exception& e)
+        {
+            s.target_airspeed = s.airspeed;
+        }
+        try
+        {
+            s.min_acceleration  = j.at("min_acceleration");
+        }
+        catch (nlohmann::json::exception& e)
+        {
+            s.min_acceleration = 0.;
+        }
+        try
+        {
+            s.max_acceleration  = j.at("max_acceleration");
+        }
+        catch (nlohmann::json::exception& e)
+        {
+            s.max_acceleration = 0.;
+        }
+    }
 
     void to_json_RichConflict(json& j, const RichConflict_T& t)
     {
@@ -153,6 +196,80 @@ static void failable_from_stringview(const std::string_view& v, T& t)
     check_from_chars_result(from_stringview(v,t),v);
 }
 
+struct CsvColumnLayout
+{
+    std::size_t id;
+    std::size_t start_x;
+    std::size_t start_y;
+    std::size_t start_z;
+    std::size_t start_theta;
+    std::size_t end_x;
+    std::size_t end_y;
+    std::size_t end_z;
+    std::size_t end_theta;
+    std::size_t airspeed;
+    std::size_t climb;
+    std::size_t turn_radius;
+    std::size_t dt;
+    std::size_t target_airspeed = std::string_view::npos;
+    std::size_t min_acceleration = std::string_view::npos;
+    std::size_t max_acceleration = std::string_view::npos;
+};
+
+static std::string_view without_line_ending(std::string_view value)
+{
+    while (!value.empty() && (value.back() == '\r' || value.back() == '\n'))
+    {
+        value.remove_suffix(1);
+    }
+    return value;
+}
+
+static bool parse_csv_layout(const CSVRow& header, CsvColumnLayout& layout)
+{
+    auto find_column = [&header](std::string_view name) {
+        for (std::size_t i = 0; i < header.size(); ++i)
+        {
+            if (without_line_ending(header[i]) == name)
+            {
+                return i;
+            }
+        }
+        return std::string_view::npos;
+    };
+
+    layout.id = find_column("ac_id");
+    layout.start_x = find_column("start_x");
+    layout.start_y = find_column("start_y");
+    layout.start_z = find_column("start_z");
+    layout.start_theta = find_column("start_theta");
+    layout.end_x = find_column("end_x");
+    layout.end_y = find_column("end_y");
+    layout.end_z = find_column("end_z");
+    layout.end_theta = find_column("end_theta");
+    layout.airspeed = find_column("airspeed");
+    layout.climb = find_column("climb");
+    layout.turn_radius = find_column("turn_radius");
+    layout.dt = find_column("dt");
+    layout.target_airspeed = find_column("target_airspeed");
+    layout.min_acceleration = find_column("min_acceleration");
+    layout.max_acceleration = find_column("max_acceleration");
+
+    return layout.id != std::string_view::npos &&
+        layout.start_x != std::string_view::npos &&
+        layout.start_y != std::string_view::npos &&
+        layout.start_z != std::string_view::npos &&
+        layout.start_theta != std::string_view::npos &&
+        layout.end_x != std::string_view::npos &&
+        layout.end_y != std::string_view::npos &&
+        layout.end_z != std::string_view::npos &&
+        layout.end_theta != std::string_view::npos &&
+        layout.airspeed != std::string_view::npos &&
+        layout.climb != std::string_view::npos &&
+        layout.turn_radius != std::string_view::npos &&
+        layout.dt != std::string_view::npos;
+}
+
 /**
  * @brief Check if the CSV row matches the expected header row
  * 
@@ -164,69 +281,57 @@ static void failable_from_stringview(const std::string_view& v, T& t)
  */
 bool check_header(const CSVRow& r)
 {
-    // std::cout << "Reading header..." << std::endl
-    //     << "- Col 0 : " << r[0]     << " (" << r[0].compare ("ac_id")       << ")" << std::endl
-    //     << "- Col 1 : " << r[1]     << " (" << r[1].compare ("start_x")     << ")" << std::endl
-    //     << "- Col 2 : " << r[2]     << " (" << r[2].compare ("start_y")     << ")" << std::endl
-    //     << "- Col 3 : " << r[3]     << " (" << r[3].compare ("start_z")     << ")" << std::endl
-    //     << "- Col 4 : " << r[4]     << " (" << r[4].compare ("start_theta") << ")" << std::endl
-    //     << "- Col 5 : " << r[5]     << " (" << r[5].compare ("end_x")       << ")" << std::endl
-    //     << "- Col 6 : " << r[6]     << " (" << r[6].compare ("end_y")       << ")" << std::endl
-    //     << "- Col 7 : " << r[7]     << " (" << r[7].compare ("end_z")       << ")" << std::endl
-    //     << "- Col 8 : " << r[8]     << " (" << r[8].compare ("end_theta")   << ")" << std::endl
-    //     << "- Col 9 : " << r[9]     << " (" << r[9].compare ("airspeed")    << ")" << std::endl
-    //     << "- Col 10: " << r[10]    << " (" << r[10].compare("climb")       << ")" << std::endl
-    //     << "- Col 11: " << r[11]    << " (" << r[11].compare("turn_radius") << ")" << std::endl
-    //     << "- Col 12: " << r[12]    << " (" << r[12].compare("dt")          << ")" << std::endl
-    //     << std::endl;
-
-
-
-    bool test = (
-        (r[0].compare ("ac_id")         == 0) &&
-        (r[1].compare ("start_x")       == 0) &&
-        (r[2].compare ("start_y")       == 0) &&
-        (r[3].compare ("start_z")       == 0) &&
-        (r[4].compare ("start_theta")   == 0) &&
-        (r[5].compare ("end_x")         == 0) &&
-        (r[6].compare ("end_y")         == 0) &&
-        (r[7].compare ("end_z")         == 0) &&
-        (r[8].compare ("end_theta")     == 0) &&
-        (r[9].compare ("airspeed")      == 0) &&
-        (r[10].compare("climb")         == 0) &&
-        (r[11].compare("turn_radius")   == 0) &&
-        ((r[12].compare("dt")  == 0) || (r[12].compare("dt\r")  == 0) || (r[12].compare("dt\n")  == 0) || (r[12].compare("dt\r\n")  == 0))
-    );
-
-    return test;
+    CsvColumnLayout layout;
+    return parse_csv_layout(r, layout);
 }
 
-static RowInfo parse_row(const CSVRow& r)
+static RowInfo parse_row(const CSVRow& r, const CsvColumnLayout& layout)
 {
     RowInfo o;
 
     std::from_chars_result res;
 
-    failable_from_stringview(r[0] ,o.stats.id);
+    failable_from_stringview(r[layout.id] ,o.stats.id);
 
-    failable_from_stringview(r[1] ,o.start.x);
-    failable_from_stringview(r[2] ,o.start.y);
-    failable_from_stringview(r[3] ,o.start.z);
-    failable_from_stringview(r[4] ,o.start.theta);
+    failable_from_stringview(r[layout.start_x] ,o.start.x);
+    failable_from_stringview(r[layout.start_y] ,o.start.y);
+    failable_from_stringview(r[layout.start_z] ,o.start.z);
+    failable_from_stringview(r[layout.start_theta] ,o.start.theta);
 
-    failable_from_stringview(r[5] ,o.end.x);
-    failable_from_stringview(r[6] ,o.end.y);
-    failable_from_stringview(r[7] ,o.end.z);
-    failable_from_stringview(r[8] ,o.end.theta);
+    failable_from_stringview(r[layout.end_x] ,o.end.x);
+    failable_from_stringview(r[layout.end_y] ,o.end.y);
+    failable_from_stringview(r[layout.end_z] ,o.end.z);
+    failable_from_stringview(r[layout.end_theta] ,o.end.theta);
 
-    failable_from_stringview(r[9] ,o.stats.airspeed);
-    failable_from_stringview(r[10],o.stats.climb);
-    failable_from_stringview(r[11],o.stats.turn_radius);
+    failable_from_stringview(r[layout.airspeed] ,o.stats.airspeed);
+    failable_from_stringview(r[layout.climb],o.stats.climb);
+    failable_from_stringview(r[layout.turn_radius],o.stats.turn_radius);
 
-    failable_from_stringview(r[12],o.dt);
+    o.stats.target_airspeed = o.stats.airspeed;
+    o.stats.min_acceleration = 0.;
+    o.stats.max_acceleration = 0.;
 
-    for(uint i = 13; i < r.size(); i++)
+    if (layout.target_airspeed != std::string_view::npos)
     {
+        failable_from_stringview(r[layout.target_airspeed],o.stats.target_airspeed);
+    }
+    if (layout.min_acceleration != std::string_view::npos)
+    {
+        failable_from_stringview(r[layout.min_acceleration],o.stats.min_acceleration);
+    }
+    if (layout.max_acceleration != std::string_view::npos)
+    {
+        failable_from_stringview(r[layout.max_acceleration],o.stats.max_acceleration);
+    }
+
+    failable_from_stringview(r[layout.dt],o.dt);
+
+    for(std::size_t i = layout.dt + 1; i < r.size(); i++)
+    {
+        if (i == layout.target_airspeed || i == layout.min_acceleration || i == layout.max_acceleration)
+        {
+            continue;
+        }
         double tslot;
         auto ret = from_stringview(r[i],tslot);
         if (ret.ec == std::errc())
@@ -267,13 +372,14 @@ static CaseData tranpose_data(const std::vector<RowInfo>& rows)
 CaseData DubinsPP::InputParser::parse_data_csv(std::istream& stream)
 {
     bool first = true;
+    CsvColumnLayout layout;
     std::vector<RowInfo> parsed_rows;
 
     for(auto &row: CSVRange(stream,';'))
     {
         if (first)
         {
-            if (!(check_header(row)))
+            if (!(parse_csv_layout(row, layout)))
             {
                 std::cout << std::endl << "========== WRONG HEADER! ==========" << std::endl << "Exiting now..." << std::endl; 
                 exit(1);
@@ -282,7 +388,7 @@ CaseData DubinsPP::InputParser::parse_data_csv(std::istream& stream)
             continue;
         }
 
-        parsed_rows.push_back(parse_row(row));
+        parsed_rows.push_back(parse_row(row, layout));
     }
 
     return tranpose_data(parsed_rows);
