@@ -6,7 +6,7 @@
 
 
 std::vector<std::unique_ptr<Dubins>> AllExtendedPathsGenerator::generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius) const
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats) const
 {
     std::vector<std::unique_ptr<Dubins>> output,tmp;
 
@@ -22,21 +22,21 @@ std::vector<std::unique_ptr<Dubins>> AllExtendedPathsGenerator::generate_paths(
     tmp = generate_extended_paths<STRAIGHT,STRAIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_paths<STRAIGHT,LEFT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_paths<STRAIGHT,RIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
@@ -44,21 +44,21 @@ std::vector<std::unique_ptr<Dubins>> AllExtendedPathsGenerator::generate_paths(
     tmp = generate_extended_paths<LEFT,STRAIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_paths<LEFT,LEFT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_paths<LEFT,RIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
@@ -66,21 +66,21 @@ std::vector<std::unique_ptr<Dubins>> AllExtendedPathsGenerator::generate_paths(
     tmp = generate_extended_paths<RIGHT,STRAIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_paths<RIGHT,LEFT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_paths<RIGHT,RIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius);
+        stats);
 
     unique_ptr_transfer(tmp);
 
@@ -96,7 +96,7 @@ uint AllExtendedPathsGenerator::max_path_num() const
 // ---------- AllExtendedFittedPathsGenerator ---------- //
 
 std::vector<std::unique_ptr<Dubins>> AllExtendedFittedPathsGenerator::generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const
 {
     std::vector<std::unique_ptr<Dubins>> output,tmp;
 
@@ -112,21 +112,21 @@ std::vector<std::unique_ptr<Dubins>> AllExtendedFittedPathsGenerator::generate_p
     tmp = generate_extended_fitted_paths<STRAIGHT,STRAIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_fitted_paths<STRAIGHT,LEFT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_fitted_paths<STRAIGHT,RIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
@@ -134,21 +134,21 @@ std::vector<std::unique_ptr<Dubins>> AllExtendedFittedPathsGenerator::generate_p
     tmp = generate_extended_fitted_paths<LEFT,STRAIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_fitted_paths<LEFT,LEFT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_fitted_paths<LEFT,RIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
@@ -156,21 +156,21 @@ std::vector<std::unique_ptr<Dubins>> AllExtendedFittedPathsGenerator::generate_p
     tmp = generate_extended_fitted_paths<RIGHT,STRAIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_fitted_paths<RIGHT,LEFT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_fitted_paths<RIGHT,RIGHT>(
         *underlying, start, end,
         start_lengths, end_lengths,
-        climb, turn_radius, target_len);
+        stats, target_len);
 
     unique_ptr_transfer(tmp);
 
@@ -224,9 +224,11 @@ std::vector<DynamicPathShape> generate_line_extended_pathshapes(
 }
 
 std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
-    const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const
+    const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const
 {
     std::vector<std::unique_ptr<Dubins>> output;
+
+    double turn_radius = stats.turn_radius;
 
     Pose3D norm_start(start),norm_end(end);
     norm_start.x /= turn_radius;

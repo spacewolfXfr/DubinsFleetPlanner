@@ -67,8 +67,9 @@ int main()
         M_PI_2
     );
 
-    double p1_speed = 1.;
-    double p2_speed = 1.;
+    AircraftStats ac10_stats = AircraftStats(10,1.,1.,TEST_MIN_TURN_RADIUS,1.,0.,0.);
+    AircraftStats ac13_stats = AircraftStats(13,1.,1.,TEST_MIN_TURN_RADIUS,1.,0.,0.);
+
 
     // -------------------- Generate test cases -------------------- //
     uint i = 10;
@@ -88,10 +89,10 @@ int main()
     double target_length_1 = 59.302868877849335;
     double target_length_2 = 59.302868877849335;
 
-    std::vector<std::unique_ptr<Dubins>> p1_possibilities = fit_possible_baseDubins(1.,TEST_MIN_TURN_RADIUS,
+    std::vector<std::unique_ptr<Dubins>> p1_possibilities = fit_possible_baseDubins(ac10_stats,
         p1_start,p1_end,target_length_1,DubinsFleetPlanner_PRECISION);
         
-    std::vector<std::unique_ptr<Dubins>> p2_possibilities = fit_possible_baseDubins(1.,TEST_MIN_TURN_RADIUS,
+    std::vector<std::unique_ptr<Dubins>> p2_possibilities = fit_possible_baseDubins(ac13_stats,
         p2_start,p2_end,target_length_2,DubinsFleetPlanner_PRECISION);
 
     if (p1_possibilities.size() == 0)
@@ -119,15 +120,15 @@ int main()
         {
             auto& d2 = p2_possibilities[i2];
 
-            double duration = std::min(d1->get_length()/p1_speed,d2->get_length()/p2_speed);
+            double duration = std::min(d1->get_length()/ac10_stats.airspeed,d2->get_length()/ac13_stats.airspeed);
 
             std::cout << "Checking for pair " << d1->get_type_abbr() << " " << d2->get_type_abbr() << "...";
-            if (d1->is_XY_separated_from(*d2,p1_speed,p2_speed,duration,min_separation))
+            if (d1->is_XY_separated_from(*d2,ac10_stats.airspeed,ac13_stats.airspeed,duration,min_separation))
             {
                 std::cout << " Valid!" << std::endl
                     << "  Checking by sampling...";
 
-                std::pair<double,double> sampled = sample_temporal_XY_dist<samples>(*d1,*d2,p1_speed,p2_speed,duration);
+                std::pair<double,double> sampled = sample_temporal_XY_dist<samples>(*d1,*d2,ac10_stats.airspeed,ac13_stats.airspeed,duration);
 
                 if (sampled.second > min_separation)
                 {

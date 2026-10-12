@@ -23,7 +23,7 @@ public:
     }
 
     virtual std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius) const = 0;
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats) const = 0;
 
     virtual uint max_path_num() const = 0;
 };
@@ -51,12 +51,12 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius) const override
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats) const override
     {
         std::vector<std::unique_ptr<Dubins>> output;
         for(const auto& g: subgenerators)
         {
-            std::vector<std::unique_ptr<Dubins>> tmp = g->generate_paths(start,end,climb,turn_radius);
+            std::vector<std::unique_ptr<Dubins>> tmp = g->generate_paths(start,end,stats);
             output.insert(output.end(),std::move_iterator(tmp.begin()),std::move_iterator(tmp.end()));
         }
         return output;
@@ -90,7 +90,7 @@ public:
     }
 
     virtual std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const = 0;
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const = 0;
 
     virtual uint max_path_num() const = 0;
 };
@@ -119,12 +119,12 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const override
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const override
     {
         std::vector<std::unique_ptr<Dubins>> output;
         for(const auto& g: subgenerators)
         {
-            std::vector<std::unique_ptr<Dubins>> tmp = g->generate_paths(start,end,climb,turn_radius,target_len);
+            std::vector<std::unique_ptr<Dubins>> tmp = g->generate_paths(start,end,stats,target_len);
             for(const auto& el : tmp)
             {
                 if (el->is_valid())

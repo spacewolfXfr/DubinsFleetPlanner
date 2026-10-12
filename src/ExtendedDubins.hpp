@@ -38,8 +38,7 @@
  * @param end       Path end
  * @param start_lens    Initial length extensions
  * @param end_lens      Final length extensions
- * @param _climb        Maximal climb rate
- * @param _turn_radius  Minimal turn radius
+ * @param stats         Aircraft stats
  * @param target_len    Target length
  * @param tol           Target fitter tolerance
  * @return std::vector<std::unique_ptr<Dubins>> 
@@ -47,27 +46,27 @@
 template <DubinsMove beginMove, DubinsMove endMove, Dubins::FittedPathGeneratorFunction generator_function>
 std::vector<std::unique_ptr<Dubins>> generate_extended_fitted_dubins(
     const Pose3D& start, const Pose3D& end, std::vector<double> start_lens, std::vector<double> end_lens,
-    double _climb, double _turn_radius, double target_len, double tol)
+    const AircraftStats& stats, double target_len, double tol)
 {
     std::vector<std::unique_ptr<Dubins>> output;
 
     for(double sl : start_lens)
     {
 
-        Pose3D shift_start = follow_dubins<beginMove>(start,sl,1.,0., _turn_radius);
-        DynamicPathShape shape_start(beginMove, start, shift_start, 1., _turn_radius, 0.);
+        Pose3D shift_start = follow_dubins<beginMove>(start,sl,1.,0., stats.turn_radius);
+        DynamicPathShape shape_start(beginMove, start, shift_start, 1., stats.turn_radius, 0.);
 
         for(double el : end_lens)
         {
-            Pose3D shift_end = follow_dubins<endMove>(end,-el,1.,0., _turn_radius);
-            DynamicPathShape shape_end(beginMove, shift_end, end, 1., _turn_radius, 0.);
+            Pose3D shift_end = follow_dubins<endMove>(end,-el,1.,0., stats.turn_radius);
+            DynamicPathShape shape_end(beginMove, shift_end, end, 1., stats.turn_radius, 0.);
 
             if (target_len - sl - el < 0.)
             {
                 continue;
             }
 
-            auto generated = generator_function(_climb, _turn_radius, shift_start, shift_end, target_len-sl-el,tol);
+            auto generated = generator_function(stats, shift_start, shift_end, target_len-sl-el,tol);
 
 
             for(auto& b : generated)
@@ -108,7 +107,7 @@ std::vector<std::unique_ptr<Dubins>> generate_extended_fitted_dubins(
 template <Dubins::FittedPathGeneratorFunction generator_function>
 std::vector<std::unique_ptr<Dubins>> generate_all_extended_fitted_dubins(
     const Pose3D& start, const Pose3D& end, std::vector<double> start_lens, std::vector<double> end_lens,
-    double climb, double turn_radius, double target_len, double tol)
+    const AircraftStats& stats, double target_len, double tol)
 {
     std::vector<std::unique_ptr<Dubins>> output,tmp;
 
@@ -121,51 +120,51 @@ std::vector<std::unique_ptr<Dubins>> generate_all_extended_fitted_dubins(
     };
 
     tmp = generate_extended_fitted_dubins<STRAIGHT,STRAIGHT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
 
     tmp = generate_extended_fitted_dubins<STRAIGHT,LEFT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
         
     tmp = generate_extended_fitted_dubins<STRAIGHT,RIGHT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
     
 
     
     tmp = generate_extended_fitted_dubins<LEFT,STRAIGHT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
     
     tmp = generate_extended_fitted_dubins<LEFT,LEFT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
     
     tmp = generate_extended_fitted_dubins<LEFT,RIGHT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
 
 
 
     tmp = generate_extended_fitted_dubins<RIGHT,STRAIGHT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
     
     tmp = generate_extended_fitted_dubins<RIGHT,LEFT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
     
     tmp = generate_extended_fitted_dubins<RIGHT,RIGHT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 
     unique_ptr_transfer(tmp);
     
@@ -176,10 +175,10 @@ std::vector<std::unique_ptr<Dubins>> generate_all_extended_fitted_dubins(
 template <Dubins::FittedPathGeneratorFunction generator_function>
 std::vector<std::unique_ptr<Dubins>> generate_straight_extended_fitted_dubins(
     const Pose3D& start, const Pose3D& end, std::vector<double> start_lens, std::vector<double> end_lens,
-    double climb, double turn_radius, double target_len, double tol)
+    const AircraftStats& stats, double target_len, double tol)
 {
     return generate_extended_fitted_dubins<STRAIGHT,STRAIGHT,generator_function>(
-        start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+        start,end,start_lens,end_lens,stats,target_len,tol);
 }
 
 /**
@@ -194,7 +193,7 @@ std::vector<std::unique_ptr<Dubins>> generate_straight_extended_fitted_dubins(
  * @return std::vector<std::unique_ptr<Dubins>> List of generated paths
  */
 std::vector<std::unique_ptr<Dubins>> generate_line_extended_base(const Pose3D& start, const Pose3D& end, 
-    double climb, double turn_radius, double target_len, double tol, const std::vector<double>& ratios = {0.,0.5,1.});
+    const AircraftStats& stats, double target_len, double tol, const std::vector<double>& ratios = {0.,0.5,1.});
 
 // ----- Path generation functions ----- //
 
@@ -216,4 +215,4 @@ std::vector<std::unique_ptr<Dubins>> generate_line_extended_base(const Pose3D& s
  */
 std::vector<std::unique_ptr<Dubins>> generate_all_extended_from_fitted_baseDubins(const Pose3D& start, const Pose3D& end, 
     std::vector<double> start_lens, std::vector<double> end_lens,
-    double climb, double turn_radius, double target_len, double tol);
+    const AircraftStats& stats, double target_len, double tol);

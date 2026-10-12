@@ -23,21 +23,21 @@ template <DubinsMove beginMove, DubinsMove endMove>
 std::vector<std::unique_ptr<Dubins>> generate_extended_paths(
     const PathsGenerator& generator,
     const Pose3D& start, const Pose3D& end, std::vector<double> start_lens, std::vector<double> end_lens,
-    double _climb, double _turn_radius)
+    const AircraftStats& stats)
 {
     std::vector<std::unique_ptr<Dubins>> output;
 
     for(double sl : start_lens)
     {
-        Pose3D shift_start = follow_dubins<beginMove>(start,sl,1.,0., _turn_radius);
-        DynamicPathShape shape_start(beginMove, start, shift_start, 1., _turn_radius, 0.);
+        Pose3D shift_start = follow_dubins<beginMove>(start,sl,1.,0., stats.turn_radius);
+        DynamicPathShape shape_start(beginMove, start, shift_start, 1., stats.turn_radius, 0.);
 
         for(double el : end_lens)
         {
-            Pose3D shift_end = follow_dubins<endMove>(end,-el,1.,0., _turn_radius);
-            DynamicPathShape shape_end(beginMove, shift_end, end, 1., _turn_radius, 0.);
+            Pose3D shift_end = follow_dubins<endMove>(end,-el,1.,0., stats.turn_radius);
+            DynamicPathShape shape_end(endMove, shift_end, end, 1., stats.turn_radius, 0.);
 
-            auto generated = generator.generate_paths(shift_start, shift_end, _climb, _turn_radius);
+            auto generated = generator.generate_paths(shift_start, shift_end, stats);
 
             for(auto& b : generated)
             {
@@ -76,26 +76,26 @@ template <DubinsMove beginMove, DubinsMove endMove>
 std::vector<std::unique_ptr<Dubins>> generate_extended_fitted_paths(
     const FittedPathsGenerator& generator,
     const Pose3D& start, const Pose3D& end, std::vector<double> start_lens, std::vector<double> end_lens,
-    double _climb, double _turn_radius, double target_len)
+    const AircraftStats& stats, double target_len)
 {
     std::vector<std::unique_ptr<Dubins>> output;
 
     for(double sl : start_lens)
     {
-        Pose3D shift_start = follow_dubins<beginMove>(start,sl,1.,0., _turn_radius);
-        DynamicPathShape shape_start(beginMove, start, shift_start, 1., _turn_radius, 0.);
+        Pose3D shift_start = follow_dubins<beginMove>(start,sl,1.,0., stats.turn_radius);
+        DynamicPathShape shape_start(beginMove, start, shift_start, 1., stats.turn_radius, 0.);
 
         for(double el : end_lens)
         {
-            Pose3D shift_end = follow_dubins<endMove>(end,-el,1.,0., _turn_radius);
-            DynamicPathShape shape_end(endMove, shift_end, end, 1., _turn_radius, 0.);
+            Pose3D shift_end = follow_dubins<endMove>(end,-el,1.,0., stats.turn_radius);
+            DynamicPathShape shape_end(endMove, shift_end, end, 1., stats.turn_radius, 0.);
 
             if (target_len - sl - el < 0.)
             {
                 continue;
             }
 
-            auto generated = generator.generate_paths(shift_start, shift_end, _climb, _turn_radius, target_len-sl-el);
+            auto generated = generator.generate_paths(shift_start, shift_end, stats, target_len-sl-el);
 
 
             for(auto& b : generated)
@@ -149,11 +149,10 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius) const override
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats) const override
     {
         return generate_extended_paths<fstMove,lstMove>(
-            *underlying, start, end, start_lengths, end_lengths,
-            climb, turn_radius);
+            *underlying, start, end, start_lengths, end_lengths,stats);
     }
 
     uint max_path_num() const override
@@ -186,7 +185,7 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius) const override;
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats) const override;
 
     uint max_path_num() const override;
 };
@@ -223,11 +222,11 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const override
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const override
     {
         return generate_extended_fitted_paths<fstMove,lstMove>(
             *underlying, start, end, start_lengths, end_lengths,
-            climb, turn_radius, target_len);
+            stats, target_len);
     }
 
     uint max_path_num() const override
@@ -260,7 +259,7 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const override;
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const override;
 
     uint max_path_num() const override;
 };
@@ -286,7 +285,7 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const override;
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const override;
 
     uint max_path_num() const
     {

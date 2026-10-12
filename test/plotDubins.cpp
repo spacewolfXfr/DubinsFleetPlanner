@@ -37,8 +37,7 @@ int main()
     double tol = 1e-6;
 
     auto candidates = fit_possible_baseDubins(stats,start,end, target_l, tol);
-    auto more_candidates = generate_line_extended_base(start,end,stats.climb,stats.turn_radius, target_l, tol,
-        {0,0.5,1.});
+    // auto more_candidates = generate_line_extended_base(start,end,stats, target_l, tol, {0,0.5,1.});
 
     for(uint i = 0; i < candidates.size(); i++)
     {
@@ -55,21 +54,21 @@ int main()
         }
     }
 
-    for(uint i = 0; i < more_candidates.size(); i++)
-    {
-        auto color = Visualisation::get_color(i);
-        auto& d = more_candidates[i];
-        if (d->is_valid())
-        {
-            Visualisation::plot_path<PLOTTING_SAMPLES>(plot,*d)
-                .label(d->get_type_abbr() + std::string(" ") + std::to_string(d->get_length()))
-                .lineColor(color)
-                .lineType(3);
-            // Visualisation::plot_junctions(plot,*d)
-            //     .label(d->get_type_abbr())
-            //     .lineColor(color);
-        }
-    }
+    // for(uint i = 0; i < more_candidates.size(); i++)
+    // {
+    //     auto color = Visualisation::get_color(i);
+    //     auto& d = more_candidates[i];
+    //     if (d->is_valid())
+    //     {
+    //         Visualisation::plot_path<PLOTTING_SAMPLES>(plot,*d)
+    //             .label(d->get_type_abbr() + std::string(" ") + std::to_string(d->get_length()))
+    //             .lineColor(color)
+    //             .lineType(3);
+    //         Visualisation::plot_junctions(plot,*d)
+    //             .label(d->get_type_abbr())
+    //             .lineColor(color);
+    //     }
+    // }
 
     Visualisation::plot_pose(plot,start).label("Start").lineColor("dark-grey");
     Visualisation::plot_pose(plot,end).label("End").lineColor("black");

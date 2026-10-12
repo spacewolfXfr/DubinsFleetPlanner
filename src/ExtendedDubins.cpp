@@ -189,7 +189,7 @@ std::vector<std::unique_ptr<Dubins>> generate_line_extended_base(const Pose3D& s
 
 std::vector<std::unique_ptr<Dubins>> generate_all_extended_from_fitted_baseDubins(const Pose3D& start, const Pose3D& end, 
     std::vector<double> start_lens, std::vector<double> end_lens,
-    double climb, double turn_radius, double target_len, double tol)
+    const AircraftStats& stats, double target_len, double tol)
 {
-    return generate_all_extended_fitted_dubins<fit_possible_baseDubins>(start,end,start_lens,end_lens,climb,turn_radius,target_len,tol);
+    return generate_all_extended_fitted_dubins<fit_possible_baseDubins>(start,end,start_lens,end_lens,stats,target_len,tol);
 }

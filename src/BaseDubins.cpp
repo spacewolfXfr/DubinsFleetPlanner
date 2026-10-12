@@ -980,19 +980,19 @@ std::unique_ptr<Dubins> shortest_possible_baseDubins(double _climb, double _turn
     return std::move(all_dubins[best_i]);
 }
 
-std::vector<std::unique_ptr<Dubins>> fit_possible_baseDubins(double _climb, double _turn_radius, const Pose3D &_start, const Pose3D &_end,
+std::vector<std::unique_ptr<Dubins>> fit_possible_baseDubins(const AircraftStats& stats, const Pose3D &_start, const Pose3D &_end,
                                                              double target_len, double tol)
 {
     std::vector<std::unique_ptr<Dubins>> output;
 
-    auto LSL_pathshapes = set_length_LSL(_start, _end, _turn_radius, target_len, tol);
-    auto LSR_pathshapes = set_length_LSR(_start, _end, _turn_radius, target_len, tol);
-    auto RSR_pathshapes = set_length_RSR(_start, _end, _turn_radius, target_len, tol);
-    auto RSL_pathshapes = set_length_RSL(_start, _end, _turn_radius, target_len, tol);
-    auto RLR_pathshapes = set_length_RLR(_start, _end, _turn_radius, target_len, tol);
-    auto LRL_pathshapes = set_length_LRL(_start, _end, _turn_radius, target_len, tol);
-    auto SRS_pathshapes = set_length_SRS(_start, _end, _turn_radius, target_len, tol);
-    auto SLS_pathshapes = set_length_SLS(_start, _end, _turn_radius, target_len, tol);
+    auto LSL_pathshapes = set_length_LSL(_start, _end, stats.turn_radius, target_len, tol);
+    auto LSR_pathshapes = set_length_LSR(_start, _end, stats.turn_radius, target_len, tol);
+    auto RSR_pathshapes = set_length_RSR(_start, _end, stats.turn_radius, target_len, tol);
+    auto RSL_pathshapes = set_length_RSL(_start, _end, stats.turn_radius, target_len, tol);
+    auto RLR_pathshapes = set_length_RLR(_start, _end, stats.turn_radius, target_len, tol);
+    auto LRL_pathshapes = set_length_LRL(_start, _end, stats.turn_radius, target_len, tol);
+    auto SRS_pathshapes = set_length_SRS(_start, _end, stats.turn_radius, target_len, tol);
+    auto SLS_pathshapes = set_length_SLS(_start, _end, stats.turn_radius, target_len, tol);
 
     auto transfer = [&](auto &pathshapes)
     {

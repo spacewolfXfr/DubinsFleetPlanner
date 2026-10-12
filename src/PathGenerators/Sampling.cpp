@@ -31,9 +31,9 @@ static void join_and_add_paths(std::vector<std::unique_ptr<Dubins>> &store,
 // -------------------- Non-fitted paths --------------------//
 
 std::vector<std::unique_ptr<Dubins>> EllipseSampling::generate_paths(
-    const Pose3D &start, const Pose3D &end, double climb, double turn_radius) const
+    const Pose3D &start, const Pose3D &end, const AircraftStats& stats) const
 {
-    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start, end, climb, turn_radius);
+    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start, end, stats);
 
     double dist = pose_dist_XY(start, end);
     for (auto ratio : ellipse_ratios)
@@ -64,13 +64,13 @@ std::vector<std::unique_ptr<Dubins>> EllipseSampling::generate_paths(
 
             std::vector<std::unique_ptr<Dubins>> p1, p2, p1_bis, p2_bis;
 
-            p1 = underlying->generate_paths(start, midpoint, climb, turn_radius);
-            p2 = underlying->generate_paths(midpoint, end, climb, turn_radius);
+            p1 = underlying->generate_paths(start, midpoint, stats);
+            p2 = underlying->generate_paths(midpoint, end, stats);
 
             join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
 
-            p1_bis = underlying->generate_paths(start, midpoint_bis, climb, turn_radius);
-            p2_bis = underlying->generate_paths(midpoint_bis, end, climb, turn_radius);
+            p1_bis = underlying->generate_paths(start, midpoint_bis, stats);
+            p2_bis = underlying->generate_paths(midpoint_bis, end, stats);
 
             join_and_add_paths(output, p1_bis, p2_bis, DubinsFleetPlanner_PRECISION);
         }
@@ -80,9 +80,9 @@ std::vector<std::unique_ptr<Dubins>> EllipseSampling::generate_paths(
 }
 
 std::vector<std::unique_ptr<Dubins>> RandomEllipseSampling::generate_paths(
-    const Pose3D &start, const Pose3D &end, double climb, double turn_radius) const
+    const Pose3D &start, const Pose3D &end, const AircraftStats& stats) const
 {
-    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start, end, climb, turn_radius);
+    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start, end, stats);
 
     double dist = pose_dist_XY(start, end);
     for (auto ratio : ellipse_ratios)
@@ -116,8 +116,8 @@ std::vector<std::unique_ptr<Dubins>> RandomEllipseSampling::generate_paths(
 
             std::vector<std::unique_ptr<Dubins>> p1, p2, p1_bis, p2_bis;
 
-            p1 = underlying->generate_paths(start, midpoint, climb, turn_radius);
-            p2 = underlying->generate_paths(midpoint, end, climb, turn_radius);
+            p1 = underlying->generate_paths(start, midpoint, stats);
+            p2 = underlying->generate_paths(midpoint, end, stats);
 
             join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
         }
@@ -129,9 +129,9 @@ std::vector<std::unique_ptr<Dubins>> RandomEllipseSampling::generate_paths(
 // -------------------- Fitted paths -------------------- //
 
 std::vector<std::unique_ptr<Dubins>> FittedEllipseSampling::generate_paths(
-    const Pose3D &start, const Pose3D &end, double climb, double turn_radius, double target_len) const
+    const Pose3D &start, const Pose3D &end, const AircraftStats& stats, double target_len) const
 {
-    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start,end,climb,turn_radius,target_len);
+    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start,end,stats,target_len);
 
     double dist = pose_dist_XY(start, end);
     double min_radius  = dist * 0.5; // Minimum possible ellipse radius (distance between foci)
@@ -182,13 +182,13 @@ std::vector<std::unique_ptr<Dubins>> FittedEllipseSampling::generate_paths(
 
             std::vector<std::unique_ptr<Dubins>> p1, p2, p1_bis, p2_bis;
 
-            p1 = underlying->generate_paths(start, midpoint, climb, turn_radius, r1 * target_len);
-            p2 = underlying->generate_paths(midpoint, end, climb, turn_radius, r2 * target_len);
+            p1 = underlying->generate_paths(start, midpoint, stats, r1 * target_len);
+            p2 = underlying->generate_paths(midpoint, end, stats, r2 * target_len);
 
             join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
 
-            p1_bis = underlying->generate_paths(start, midpoint_bis, climb, turn_radius, r1 * target_len);
-            p2_bis = underlying->generate_paths(midpoint_bis, end, climb, turn_radius, r2 * target_len);
+            p1_bis = underlying->generate_paths(start, midpoint_bis, stats, r1 * target_len);
+            p2_bis = underlying->generate_paths(midpoint_bis, end, stats, r2 * target_len);
 
             join_and_add_paths(output, p1_bis, p2_bis, DubinsFleetPlanner_PRECISION);
         }
@@ -197,9 +197,9 @@ std::vector<std::unique_ptr<Dubins>> FittedEllipseSampling::generate_paths(
 }
 
 std::vector<std::unique_ptr<Dubins>> FittedRandomEllipseSampling::generate_paths(
-    const Pose3D &start, const Pose3D &end, double climb, double turn_radius, double target_len) const
+    const Pose3D &start, const Pose3D &end, const AircraftStats& stats, double target_len) const
 {
-    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start, end, climb, turn_radius, target_len);
+    std::vector<std::unique_ptr<Dubins>> output = underlying->generate_paths(start, end, stats, target_len);
 
     for (auto ratio : target_length_ratios)
     {
@@ -234,8 +234,8 @@ std::vector<std::unique_ptr<Dubins>> FittedRandomEllipseSampling::generate_paths
 
             std::vector<std::unique_ptr<Dubins>> p1, p2, p1_bis, p2_bis;
 
-            p1 = underlying->generate_paths(start, midpoint, climb, turn_radius, r1 * target_len);
-            p2 = underlying->generate_paths(midpoint, end, climb, turn_radius, r2 * target_len);
+            p1 = underlying->generate_paths(start, midpoint, stats, r1 * target_len);
+            p2 = underlying->generate_paths(midpoint, end, stats, r2 * target_len);
 
             join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
         }

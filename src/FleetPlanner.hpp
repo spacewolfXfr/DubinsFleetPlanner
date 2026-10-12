@@ -287,7 +287,7 @@ public:
     std::vector<std::unique_ptr<Dubins>> generate_possible_paths(
         const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_len) const
     {
-        return path_gen.generate_paths(start,end,stats.climb,stats.turn_radius,target_len);
+        return path_gen.generate_paths(start,end,stats,target_len);
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_possible_paths(
@@ -296,7 +296,7 @@ public:
     {
         if (path_gens_by_ac.size() > ac_index)
         {
-            return path_gens_by_ac[ac_index].get().generate_paths(start,end,stats.climb,stats.turn_radius,target_len);
+            return path_gens_by_ac[ac_index].get().generate_paths(start,end,stats,target_len);
         }
         return generate_possible_paths(start,end,stats,target_len);
     }
@@ -333,7 +333,7 @@ public:
     std::vector<std::unique_ptr<Dubins>> generate_shortest_paths(
         const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double wind_x, double wind_y) const
     {
-        return shortest_path_gen.generate_paths(start,end,stats.climb,stats.turn_radius);
+        return shortest_path_gen.generate_paths(start,end,stats);
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_shortest_paths(
@@ -342,7 +342,7 @@ public:
     {
         if (shortest_path_gens_by_ac.size() > ac_index)
         {
-            return shortest_path_gens_by_ac[ac_index].get().generate_paths(start,end,stats.climb,stats.turn_radius);
+            return shortest_path_gens_by_ac[ac_index].get().generate_paths(start,end,stats);
         }
         return generate_shortest_paths(start,end,stats,wind_x,wind_y);
     }
@@ -616,7 +616,7 @@ protected:
             double target_time = times[i];
             base_end.x -= target_time*wind_x;
             base_end.y -= target_time*wind_y;
-            double target_len = target_time*stats[i].airspeed;
+            double target_len = target_time*(stats[i].airspeed+stats[i].target_airspeed)/2.0;
 
             // List all possibilities for aircraft i
             output[i] = generate_possible_paths(i,starts[i],base_end,stats[i],target_len);
@@ -624,7 +624,7 @@ protected:
             {
                 if (el->is_valid())
                 {
-                    assert(abs(el->get_duration(stats[i].airspeed) - target_time) < DubinsFleetPlanner_PRECISION);
+                    assert(abs(el->get_length() - target_len) < DubinsFleetPlanner_PRECISION);
                 }
             }
         }
@@ -667,8 +667,7 @@ protected:
                 // Modify target according to estimated travel time
                 base_end.x -= target_time*wind_x;
                 base_end.y -= target_time*wind_y;
-                double target_len = target_time*stats[i].airspeed;
-
+            double target_len = target_time*(stats[i].airspeed+stats[i].target_airspeed)/2.0;
                 // Add possibilities to aircraft i
                 auto possibilities = generate_possible_paths(i,starts[i],base_end,stats[i],target_len);
 
@@ -715,8 +714,7 @@ protected:
                 // Modify target according to estimated travel time
                 end.x -= target_time*wind_x;
                 end.y -= target_time*wind_y;
-                double target_len = target_time*stats[i].airspeed;
-
+            double target_len = target_time*(stats[i].airspeed+stats[i].target_airspeed)/2.0;
                 // Add possibilities to aircraft i
                 auto possibilities = generate_possible_paths(i,starts[i],end,stats[i],target_len);
 

@@ -102,15 +102,14 @@ std::unique_ptr<Dubins> shortest_possible_baseDubins(double _climb, double _turn
  * 
  * TODO: Handle verticality
  * 
- * @param _climb        Climb rate at unit speed
- * @param _turn_radius  Minimal turn radius for Dubins
+ * @param stats         Aircraft statistics (climb, turn radius)
  * @param _start        Starting point
  * @param _end          Ending point
  * @param target_len    Target length
  * @param tol           Tolerance for target length solver
  * @return std::vector<Dubins> 
  */
-std::vector<std::unique_ptr<Dubins>> fit_possible_baseDubins([[maybe_unused]] double _climb, double _turn_radius, const Pose3D& _start, const Pose3D& _end,
+std::vector<std::unique_ptr<Dubins>> fit_possible_baseDubins(const AircraftStats& stats, const Pose3D& _start, const Pose3D& _end,
     double target_len, double tol);
 
 

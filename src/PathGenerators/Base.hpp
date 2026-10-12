@@ -15,9 +15,9 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius) const override
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats) const override
     {
-        return list_possible_baseDubins(climb, turn_radius, start, end, tol);
+        return list_possible_baseDubins(stats.climb, stats.turn_radius, start, end, tol);
     }
 
     uint max_path_num() const override
@@ -40,9 +40,9 @@ public:
     }
 
     std::vector<std::unique_ptr<Dubins>> generate_paths(
-        const Pose3D& start, const Pose3D& end, double climb, double turn_radius, double target_len) const override
+        const Pose3D& start, const Pose3D& end, const AircraftStats& stats, double target_length) const override
     {
-        return fit_possible_baseDubins(climb, turn_radius, start, end, target_len, precision_tol);
+        return fit_possible_baseDubins(stats, start, end, target_length, precision_tol);
     }
 
     uint max_path_num() const override

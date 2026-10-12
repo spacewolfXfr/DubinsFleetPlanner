@@ -524,11 +524,11 @@ public:
      * @brief Generic type for fitted path generation function
      *
      * The arguments are:
-     * Climb ratio, turn radius, start pose, end pose, target length, length (and endpoints dist) tolerance
+     * Aircraft stats, start pose, end pose, target length, length (and endpoints dist) tolerance
      *
      * Returns the list of valid paths as unique_ptr
      */
-    typedef std::vector<std::unique_ptr<Dubins>> (*FittedPathGeneratorFunction)(double, double, const Pose3D &, const Pose3D &, double, double);
+    typedef std::vector<std::unique_ptr<Dubins>> (*FittedPathGeneratorFunction)(const AircraftStats&, const Pose3D &, const Pose3D &, double, double);
 };
 
 Dubins join_paths(const Dubins &first, const Dubins &second, double precision_tol = DubinsFleetPlanner_PRECISION);
