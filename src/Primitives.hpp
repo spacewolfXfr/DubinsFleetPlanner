@@ -434,6 +434,18 @@ inline double path_planar_speed(const PathShape<m>& s)
     return std::abs(s.p2*s.p1);
 }
 
+inline double path_planar_speed(const DynamicPathShape& s)
+{
+    if (s.m == STRAIGHT)
+    {
+        return std::sqrt(s.p1*s.p1+s.p2*s.p2);
+    }
+    else
+    {
+        return std::abs(s.p2*s.p1);
+    }
+}
+
 
 /**
  * @brief Set the speed for the path. Warning! If the speed is negative, the path should be followed backward 
@@ -457,6 +469,20 @@ template<DubinsMove m>
 inline void path_set_planar_speed(PathShape<m>& s, double speed)
 {
     s.p2 = ((m == LEFT) ? 1. : -1.) * speed/s.p1;
+}
+
+inline void path_set_planar_speed(DynamicPathShape& s, double speed)
+{
+    if (s.m == STRAIGHT)
+    {
+        double curr_speed = path_planar_speed(s);
+        s.p1 *= speed/curr_speed;
+        s.p2 *= speed/curr_speed;
+    }
+    else
+    {
+        s.p2 = ((s.m == LEFT) ? 1. : -1.) * speed/s.p1;
+    }
 }
 
 /**
