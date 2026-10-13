@@ -5,7 +5,7 @@
 
 include(FetchContent)
 
-find_package(Boost CONFIG REQUIRED COMPONENTS program_options chrono system container_hash)
+find_package(Boost CONFIG REQUIRED COMPONENTS program_options chrono system container_hash math)
 set(Boost_DEBUG ON)
 
 
