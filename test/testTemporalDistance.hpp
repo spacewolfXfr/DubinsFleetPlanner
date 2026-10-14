@@ -45,5 +45,3 @@
 #define TEST_PRECISION DubinsFleetPlanner_PRECISION
 #endif
 
-inline const AircraftStats TEST_AIRCRAFT_STATS{0, 1., 1., 1., 0., 0., 0.};
-

@@ -1065,6 +1065,43 @@ std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const P
     Eigen::Vector2d n1(s1.p1, s1.p2);
     Eigen::Vector2d n2(s2.p1, s2.p2);
 
+    // No acceleration: lower degree polynomial
+    if (std::abs(a1) < DubinsFleetPlanner_ZERO_TOLERANCE && std::abs(a2) < DubinsFleetPlanner_ZERO_TOLERANCE)
+    {
+
+        Eigen::Vector2d dn = n1 - n2;
+        double sc = dn.dot(dp);
+        double nv2 = dn.squaredNorm();
+
+        double min_loc = 0.;
+        double min_dist = dp.norm();
+        
+        double dist = (dp + duration*dn).norm();
+        if (dist < min_dist)
+        {
+            min_dist = dist;
+            min_loc  = duration;
+        }
+
+        if (nv2 > DubinsFleetPlanner_PRECISION)
+        {
+            double tmin = -sc/nv2;
+            if ((0 <= tmin) && (tmin <= duration))
+            {
+                // Safeguard again floating point error (the minimum value cannot be negative, but because of fp errors it may...)
+                double dist2 = std::max(dp.squaredNorm()-sc*sc/nv2,0.);
+                dist = std::sqrt(dist2);
+                if (dist < min_dist)
+                {
+                    min_dist = dist;
+                    min_loc  = tmin;
+                }
+            }
+        }
+
+        return {min_loc,min_dist};
+    }
+
     // Compute the polynomial coefficients for the distance function
     // The distance is given by: d(t) = ||p1(t) - p2(t)||^2
     // where p1(t) = p1 + t*n1*(v1 + t*a1) and p2(t) = p2 + t*n2*(v2 + t*a2)
@@ -1106,6 +1143,8 @@ std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const P
         }
     }
 
+    // Safeguard against numeric imprecision
+    min_dist2 = std::max(min_dist2,0.);
     return {min_loc, std::sqrt(min_dist2)};
 }
 
