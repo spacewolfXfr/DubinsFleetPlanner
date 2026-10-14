@@ -18,18 +18,12 @@
 #pragma once
 
 #include <tuple>
-#include <limits>
-#include <Eigen/Dense>
-#include <ScalarMin/IntervalSolver.hpp>
-#include <ScalarMin/RoundingPolicies.hpp>
 
 #include "utils.hpp"
 #include "Dubins.hpp"
 #include "Primitives.hpp"
 #include "ProjectHeader.h"
 
-#include "ConflictTrajectories/circleCircle.hpp"
-#include "ConflictTrajectories/lineCircle.hpp"
 
 #ifndef DubinsFleetPlanner_PRECISION
 #define DubinsFleetPlanner_PRECISION 1e-6
@@ -210,7 +204,6 @@ std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathSha
 template<bool use_derivatives=DubinsFleetPlanner_SOLVE_WITH_DERIVATIVES>
 std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const DynamicPathShape &s2,
     const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol);
-
 
 
 /**

@@ -18,6 +18,19 @@
 #include "ConflictDetection.hpp"
 #include "Primitives.hpp"
 
+#include <boost/math/tools/cubic_roots.hpp>
+
+#include <limits>
+#include <Eigen/Dense>
+#include <ScalarMin/IntervalSolver.hpp>
+#include <ScalarMin/RoundingPolicies.hpp>
+
+#include "ConflictTrajectories/circleCircle.hpp"
+#include "ConflictTrajectories/lineCircle.hpp"
+
+#include "ConflictTrajectories/linAccLineCircle.hpp"
+#include "ConflictTrajectories/linAccCircleCircle.hpp"
+
 // ---------- Misc util functions ---------- //
 
 [[gnu::const]]
@@ -77,6 +90,24 @@ inline double put_in_arc(double start_angle, double stop_angle, double candidate
 inline Eigen::Vector2d angle_vector(double angle)
 {
     return Eigen::Vector2d(std::cos(angle),std::sin(angle));
+}
+
+/**
+ * @brief Horner's method for fast degree 4 polynomial evaluation
+ *
+ * Cf https://en.wikipedia.org/wiki/Horner's_method
+ *
+ * @param x : Evaluation point for the polynomial
+ * @param a4 : Degree 4 coefficient of the polynomial
+ * @param a3 : Degree 3 coefficient of the polynomial
+ * @param a2 : Degree 2 coefficient of the polynomial
+ * @param a1 : Degree 1 coefficient of the polynomial
+ * @param a0 : Degree 0 coefficient of the polynomial
+ * @return double : Value of the polynomial evaluated at `x`
+ */
+static double p4_eval(double x, double a4, double a3, double a2, double a1, double a0)
+{
+  return a0 + x * (a1 + x * (a2 + x * (a3 + x * (a4))));
 }
 
 // -------------------- 3D Euclidean distance -------------------- //
@@ -1021,87 +1052,160 @@ std::pair<double,double> temporal_3D_dist(const PathShape<m1> &s1, const PathSha
 
 template<bool use_derivatives>
 std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<STRAIGHT> &s2,
-    [[maybe_unused]] const AircraftStats& s1_stats, [[maybe_unused]] const AircraftStats& s2_stats,
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats,
     double duration, [[maybe_unused]] double tol)
 {
+    // Gather parameters
+    double a1 = (s1_stats.target_airspeed - s1_stats.airspeed)/duration;
+    double v1 = s1_stats.airspeed;
+    double a2 = (s2_stats.target_airspeed - s2_stats.airspeed)/duration;
+    double v2 = s2_stats.airspeed;
+
     Eigen::Vector2d dp(s1.x - s2.x, s1.y - s2.y);
-    Eigen::Vector2d v1(s1.p1, s1.p2);
-    Eigen::Vector2d v2(s2.p1, s2.p2);
+    Eigen::Vector2d n1(s1.p1, s1.p2);
+    Eigen::Vector2d n2(s2.p1, s2.p2);
 
-    Eigen::Vector2d dv = v1 - v2;
-    double sc = dv.dot(dp);
-    double nv2 = dv.squaredNorm();
+    // Compute the polynomial coefficients for the distance function
+    // The distance is given by: d(t) = ||p1(t) - p2(t)||^2
+    // where p1(t) = p1 + t*n1*(v1 + t*a1) and p2(t) = p2 + t*n2*(v2 + t*a2)
+    // So d(t) = ||(p1 - p2) + t*(n1*(v1 + t*a1) - n2*(v2 + t*a2))||^2
 
-    double min_loc = 0.;
-    double min_dist = dp.norm();
-    
-    double dist = (dp + duration*dv).norm();
-    if (dist < min_dist)
+    double c0 = dp.squaredNorm();
+    double c1 = 2 * dp.dot(n1*v1 - n2*v2);
+    double c2 = (n1*v1 - n2*v2).squaredNorm()+ 2 * dp.dot(n1*a1 - n2*a2);
+    double c3 = 2 * (n1*v1 - n2*v2).dot(n1*a1 - n2*a2);
+    double c4 = (n1*a1 - n2*a2).squaredNorm();
+
+    // Compute the polynomial coefficients for the derivative of the distance function
+    double c1_d = c1;
+    double c2_d = 2*c2;
+    double c3_d = 3*c3;
+    double c4_d = 4*c4;
+
+    // Obtain the critical points of the distance function by solving the derivative polynomial
+    auto roots = boost::math::tools::cubic_roots(c4_d, c3_d, c2_d, c1_d);
+
+    std::vector<double> candidates = {0., duration};
+    for (const auto& root : roots)
     {
-        min_dist = dist;
-        min_loc  = duration;
-    }
-
-    if (nv2 > DubinsFleetPlanner_PRECISION)
-    {
-        double tmin = -sc/nv2;
-        if ((0 <= tmin) && (tmin <= duration))
+        if (!std::isnan(root) && root >= 0. && root <= duration)
         {
-            // Safeguard again floating point error (the minimum value cannot be negative, but because of fp errors it may...)
-            double dist2 = std::max(dp.squaredNorm()-sc*sc/nv2,0.);
-            dist = std::sqrt(dist2);
-            if (dist < min_dist)
-            {
-                min_dist = dist;
-                min_loc  = tmin;
-            }
+            candidates.push_back(root);
         }
     }
 
-    return {min_loc,min_dist};
+    double min_loc = 0.;
+    double min_dist2 = c0;
+    for (const auto& t : candidates)
+    {
+        double dist2 = p4_eval(t,c4,c3,c2,c1,c0);
+        if (dist2 < min_dist2)
+        {
+            min_dist2 = dist2;
+            min_loc = t;
+        }
+    }
+
+    return {min_loc, std::sqrt(min_dist2)};
 }
 
 template<DubinsMove m, bool use_derivatives> requires (m != STRAIGHT)
 std::pair<double,double> temporal_XY_dist(const PathShape<STRAIGHT> &s1, const PathShape<m> &s2,
-    [[maybe_unused]] const AircraftStats& s1_stats, [[maybe_unused]] const AircraftStats& s2_stats,
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats,
     double duration, double tol)
 {
     typedef OptimizationRounding::fast_rounding<double> Policies;
 
-    LineCircle problem(s1,s2);
+    auto s1_cpy = s1;
+    auto s2_cpy = s2;
 
-    auto fbind = [problem](double x){return problem.f(x);};
-    auto Fbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F(I);};
-
-    double min_loc;
-
-    if (use_derivatives)
+    if (std::abs(s1_stats.airspeed - s1_stats.target_airspeed) < tol && std::abs(s2_stats.airspeed - s2_stats.target_airspeed) < tol)
     {
-        auto f_dbind = [problem](double x){return problem.f_d(x);};
-        auto F_dbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_d(I);};
-        auto f_ddbind = [problem](double x){return problem.f_dd(x);};
-        auto F_ddbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_dd(I);};
+        // If speed is not changing, use the LineCircle definition
+        path_set_planar_speed(s1_cpy,s1_stats.airspeed);
+        path_set_planar_speed(s2_cpy,s2_stats.airspeed);
 
-        min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
-            0.,duration,
-            fbind,Fbind,
-            f_dbind,F_dbind,
-            f_ddbind,F_ddbind,
-            tol, 0.
-        );
+        LineCircle problem(s1_cpy,s2_cpy);
+
+        auto fbind = [problem](double x){return problem.f(x);};
+        auto Fbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F(I);};
+
+        double min_loc;
+
+        if (use_derivatives)
+        {
+            auto f_dbind = [problem](double x){return problem.f_d(x);};
+            auto F_dbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_d(I);};
+            auto f_ddbind = [problem](double x){return problem.f_dd(x);};
+            auto F_ddbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_dd(I);};
+
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                f_dbind,F_dbind,
+                f_ddbind,F_ddbind,
+                tol, 0.
+            );
+        }
+        else
+        {
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                tol, 0.
+            );
+        }
+
+        double min_val = std::sqrt(problem.f(min_loc));
+
+        return {min_loc,min_val};
     }
     else
     {
-        min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
-            0.,duration,
-            fbind,Fbind,
-            tol, 0.
-        );
+        // If speed is changing, use the linAccCircleCircle definition (and normalize speed in shapes)
+        double aL = (s1_stats.target_airspeed - s1_stats.airspeed)/duration;
+        double vL = s1_stats.airspeed;
+        double aC = (s2_stats.target_airspeed - s2_stats.airspeed)/duration;
+        double vC = s2_stats.airspeed;
+        
+        path_set_planar_speed(s1_cpy,1.);
+        path_set_planar_speed(s2_cpy,1.);
+
+        LinAccLineCircle problem(s1_cpy,s2_cpy,aL,vL,aC,vC);
+
+        auto fbind = [problem](double x){return problem.f(x);};
+        auto Fbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F(I);};
+
+        double min_loc;
+
+        if (use_derivatives)
+        {
+            auto f_dbind = [problem](double x){return problem.f_d(x);};
+            auto F_dbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_d(I);};
+            auto f_ddbind = [problem](double x){return problem.f_dd(x);};
+            auto F_ddbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_dd(I);};
+
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                f_dbind,F_dbind,
+                f_ddbind,F_ddbind,
+                tol, 0.
+            );
+        }
+        else
+        {
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                tol, 0.
+            );
+        }
+
+        double min_val = std::sqrt(problem.f(min_loc));
+
+        return {min_loc,min_val};
     }
-
-    double min_val = std::sqrt(problem.f(min_loc));
-
-    return {min_loc,min_val};
 }
 
 template<DubinsMove m, bool use_derivatives> requires (m != STRAIGHT)
@@ -1119,40 +1223,92 @@ std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathSha
 {
     typedef OptimizationRounding::fast_rounding<double> Policies;
 
-    CircleCircle problem(s1,s2);
+    auto s1_cpy = s1;
+    auto s2_cpy = s2;
 
-    auto fbind = [problem](double x){return problem.f(x);};
-    auto Fbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F(I);};
-    double min_loc;
-
-    if (use_derivatives)
+    if (std::abs(s1_stats.airspeed - s1_stats.target_airspeed) < tol && std::abs(s2_stats.airspeed - s2_stats.target_airspeed) < tol)
     {
-        auto f_dbind = [problem](double x){return problem.f_d(x);};
-        auto F_dbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_d(I);};
-        auto f_ddbind = [problem](double x){return problem.f_dd(x);};
-        auto F_ddbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_dd(I);};
+        CircleCircle problem(s1,s2);
 
-        min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
-            0.,duration,
-            fbind,Fbind,
-            f_dbind,F_dbind,
-            f_ddbind,F_ddbind,
-            tol, 0.
-        );
+        auto fbind = [problem](double x){return problem.f(x);};
+        auto Fbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F(I);};
+        double min_loc;
+
+        if (use_derivatives)
+        {
+            auto f_dbind = [problem](double x){return problem.f_d(x);};
+            auto F_dbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_d(I);};
+            auto f_ddbind = [problem](double x){return problem.f_dd(x);};
+            auto F_ddbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_dd(I);};
+
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                f_dbind,F_dbind,
+                f_ddbind,F_ddbind,
+                tol, 0.
+            );
+        }
+        else
+        {
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                tol, 0.
+            );
+        }
+
+
+        double min_val = std::sqrt(problem.f(min_loc));
+
+        return {min_loc,min_val};
     }
     else
     {
-        min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
-            0.,duration,
-            fbind,Fbind,
-            tol, 0.
-        );
+        // If speed is changing, use the linAccCircleCircle definition (and normalize speed in shapes)
+        double a1 = (s1_stats.target_airspeed - s1_stats.airspeed)/duration;
+        double v1 = s1_stats.airspeed;
+        double a2 = (s2_stats.target_airspeed - s2_stats.airspeed)/duration;
+        double v2 = s2_stats.airspeed;
+        
+        path_set_planar_speed(s1_cpy,1.);
+        path_set_planar_speed(s2_cpy,1.);
+
+        LinAccCircleCircle problem(s1_cpy,s2_cpy,a1,v1,a2,v2);
+
+        auto fbind = [problem](double x){return problem.f(x);};
+        auto Fbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F(I);};
+        double min_loc;
+
+        if (use_derivatives)
+        {
+            auto f_dbind = [problem](double x){return problem.f_d(x);};
+            auto F_dbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_d(I);};
+            auto f_ddbind = [problem](double x){return problem.f_dd(x);};
+            auto F_ddbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F_dd(I);};
+
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                f_dbind,F_dbind,
+                f_ddbind,F_ddbind,
+                tol, 0.
+            );
+        }
+        else
+        {
+            min_loc = IntervalSolver::minimize_interval_method<double,Policies>(
+                0.,duration,
+                fbind,Fbind,
+                tol, 0.
+            );
+        }
+
+
+        double min_val = std::sqrt(problem.f(min_loc));
+
+        return {min_loc,min_val};
     }
-
-
-    double min_val = std::sqrt(problem.f(min_loc));
-
-    return {min_loc,min_val};
 }
 
 // Explicitely declare all possible specializations
