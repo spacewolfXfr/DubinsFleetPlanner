@@ -22,7 +22,7 @@
 
 #include "randomPathShape.hpp"
 
-
+#include <iostream>
 
 #ifndef PLOTTING_SAMPLES
 #define PLOTTING_SAMPLES 2000

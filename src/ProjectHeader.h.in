@@ -14,6 +14,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with DubinsFleetPlanner.  If not, see <https://www.gnu.org/licenses/>.
+#pragma once
 
 #define DubinsFleetPlanner_VERSION_MAJOR @DubinsFleetPlanner_VERSION_MAJOR@
 #define DubinsFleetPlanner_VERSION_MINOR @DubinsFleetPlanner_VERSION_MINOR@

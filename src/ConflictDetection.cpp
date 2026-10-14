@@ -1218,7 +1218,7 @@ std::pair<double,double> temporal_XY_dist(const PathShape<m> &s1, const PathShap
 
 template<DubinsMove m1, DubinsMove m2, bool use_derivatives> requires ((m1!=STRAIGHT) && (m2!=STRAIGHT))
 std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2,
-    [[maybe_unused]] const AircraftStats& s1_stats, [[maybe_unused]] const AircraftStats& s2_stats,
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats,
     double duration, double tol)
 {
     typedef OptimizationRounding::fast_rounding<double> Policies;

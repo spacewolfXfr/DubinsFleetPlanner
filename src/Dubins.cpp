@@ -177,6 +177,14 @@ std::pair<double, double> compute_XY_separation(
 {
     std::pair<double, double> output;
 
+    double v1_S = speed_at_time(p1_stats,0,duration);
+    double v1_M = speed_at_time(p1_stats,duration/2.,duration);
+    double v1_E = speed_at_time(p1_stats,duration,duration);
+
+    double v2_S = speed_at_time(p1_stats,0,duration);
+    double v2_M = speed_at_time(p1_stats,duration/2.,duration);
+    double v2_E = speed_at_time(p1_stats,duration,duration);
+
     DubinsMove m1 = p1.m;
     DubinsMove m2 = p2.m;
 
@@ -205,81 +213,84 @@ std::pair<double, double> compute_XY_separation(
         double t1, t2;
         std::tie(geo_dist, t1, t2) = geometric_XY_dist(p1, p2, duration);
 
+        double v1_max = std::max(v1_S,v1_E);
+        double v2_max = std::max(v2_S,v2_E);
+
         // If there may be a conflict, do a detailed search
         if (geo_dist < min_sep)
         {
             // If recursive computation is enabled, retry computing separation using geometry
             if (rec > 0)
             {
-                auto shifted_p1 = shift_start(p1, duration / 2);
-                auto shifted_p2 = shift_start(p2, duration / 2);
+                DynamicPathShape p1_cpy = p1;
+                DynamicPathShape p2_cpy = p2;
+
+                path_set_planar_speed(p1_cpy,1.);
+                path_set_planar_speed(p2_cpy,1.);
+
+                double l1 = length_traveled(p1_stats,duration/2.,duration);
+                double l2 = length_traveled(p2_stats,duration/2.,duration);
+
+                auto shifted_p1 = shift_start(p1_cpy, l1);
+                auto shifted_p2 = shift_start(p2_cpy, l2);
+
+                AircraftStats p1_first_half  = p1_stats;
+                p1_first_half.target_airspeed = v1_M;
+                AircraftStats p2_first_half  = p2_stats;
+                p2_first_half.target_airspeed = v2_M;
+
+                AircraftStats p1_second_half = p1_stats;
+                p1_second_half.airspeed = v1_M;
+                AircraftStats p2_second_half = p2_stats;
+                p2_second_half.airspeed = v2_M;
 
                 // If the geometric test suggests there is a collision in the second half, look at the second half first
                 if (t1 >= duration / 2 && t2 >= duration / 2)
                 {
-                    AircraftStats shifted_p1_stats = p1_stats;
-                    AircraftStats shifted_p2_stats = p2_stats;
-                    shifted_p1_stats.airspeed = speed_at_time(p1_stats, duration / 2, duration);
-                    shifted_p2_stats.airspeed = speed_at_time(p2_stats, duration / 2, duration);
+                    auto rec_output = compute_XY_separation(shifted_p1, shifted_p2, p1_second_half, p2_second_half, duration / 2, min_sep, tol, rec - 1);
+                    rec_output.first += duration /2.; // Location needs to be corrected due to shifting
 
-                    output = compute_XY_separation(shifted_p1, shifted_p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
-                    output.first += duration / 2; // Location needs to be corrected due to shifting
 
                     // If the recursive search found a conflict, output it
-                    if (output.second < min_sep)
+                    if (rec_output.second < min_sep)
                     {
-                        return output;
+                        return rec_output;
                     }
                     // Otherwise, explore the other branch and output the smallest distance value
                     else
                     {
-                        AircraftStats shifted_p1_stats = p1_stats;
-                        shifted_p1_stats.target_airspeed = speed_at_time(p1_stats, duration / 2, duration);
-                        AircraftStats shifted_p2_stats = p2_stats;
-                        shifted_p2_stats.target_airspeed = speed_at_time(p2_stats, duration / 2, duration);
-
-                        auto output_bis = compute_XY_separation(p1, p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
-                        if (output_bis.second < output.second)
+                        auto output_bis = compute_XY_separation(p1, p2, p1_first_half, p2_first_half, duration / 2, min_sep, tol, rec - 1);
+                        if (output_bis.second < rec_output.second)
                         {
                             return output_bis;
                         }
                         else
                         {
-                            return output;
+                            return rec_output;
                         }
                     }
                 }
                 else
                 {
-                    AircraftStats shifted_p1_stats = p1_stats;
-                    AircraftStats shifted_p2_stats = p2_stats;
-                    shifted_p1_stats.target_airspeed = speed_at_time(p1_stats, duration / 2, duration);
-                    shifted_p2_stats.target_airspeed = speed_at_time(p2_stats, duration / 2, duration);
-
-                    output = compute_XY_separation(p1, p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
+                    auto rec_output = compute_XY_separation(p1, p2, p1_first_half, p2_first_half, duration / 2, min_sep, tol, rec - 1);
 
                     // If the recursive search found a conflict, output it
-                    if (output.second < min_sep)
+                    if (rec_output.second < min_sep)
                     {
-                        return output;
+                        return rec_output;
                     }
                     // Otherwise, explore the other branch and output the smallest distance value
                     else
                     {
-                        AircraftStats shifted_p1_stats = p1_stats;
-                        AircraftStats shifted_p2_stats = p2_stats;
-                        shifted_p1_stats.airspeed = speed_at_time(p1_stats, duration / 2, duration);
-                        shifted_p2_stats.airspeed = speed_at_time(p2_stats, duration / 2, duration);
-
-                        auto output_bis = compute_XY_separation(shifted_p1, shifted_p2, shifted_p1_stats, shifted_p2_stats, duration / 2, min_sep, tol, rec - 1);
+                        auto output_bis = compute_XY_separation(shifted_p1, shifted_p2, p1_second_half, p2_second_half, duration / 2, min_sep, tol, rec - 1);
                         output_bis.first += duration / 2; // Location needs to be corrected due to shifting
-                        if (output_bis.second < output.second)  
+                        if (output_bis.second < rec_output.second)  
                         {
                             return output_bis;
                         }
                         else
                         {
-                            return output;
+                            return rec_output;
                         }
                     }
                 }
