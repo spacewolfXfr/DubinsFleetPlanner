@@ -33,7 +33,7 @@ static double compute_plan_duration(
 
     for(uint i = 0; i < N; i++)
     {
-        double time = paths[i].get_length()/stats[i].airspeed;
+        double time = paths[i].get_duration(stats[i]);
         max_time = std::max(time,max_time);
     }
 

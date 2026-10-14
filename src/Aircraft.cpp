@@ -18,6 +18,8 @@
 #include <stdexcept>
 #include "Aircraft.h"
 
+#include "ProjectHeader.h"
+
 double length_traveled(const AircraftStats& stats, double t, double trajectory_duration)
 {
     double duration = trajectory_duration;
@@ -36,6 +38,15 @@ double time_to_travel_length(const AircraftStats& stats, double length, double t
     double a = (stats.target_airspeed-stats.airspeed)/(2.*duration);
     double b = stats.airspeed;
     double c = -length;
+
+    if (abs(a) < DubinsFleetPlanner_ZERO_TOLERANCE)
+    {
+        if (abs(b) < DubinsFleetPlanner_ZERO_TOLERANCE)
+        {
+            throw std::runtime_error("No valid solution for time_to_travel_length: zero speed and zero acceleration");
+        }
+        return -c/b; // Linear case
+    }
 
     double discriminant = b*b - 4*a*c;
 

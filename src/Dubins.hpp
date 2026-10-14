@@ -511,11 +511,16 @@ public:
         return true;
     }
 
+    static bool are_XY_tdist_separated(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
+                                 double duration, double min_tdist,
+                                 double tol = DubinsFleetPlanner_PRECISION,
+                                 uint rec = DubinsDistDefaultRec);
+
     /**
      * @brief Generic type for separation function
      *
      * The arguments are:
-     * First path, second path, first aircraft stats, second aircraft stats, duration, minimal distance (as time unit, to be multiplied by the aircraft's speed), computation precision, heuristic recursion
+     * First path, second path, first aircraft stats, second aircraft stats, duration, minimal distance, computation precision, heuristic recursion
      */
     typedef bool (*DubinsSeparationFunction)(const Dubins &, const Dubins &, const AircraftStats&, const AircraftStats&, double, double, double, uint);
 

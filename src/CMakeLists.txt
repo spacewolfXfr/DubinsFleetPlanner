@@ -43,7 +43,8 @@ set(DubinsFleetPlannerLib_SRC
     PathGenerators/Sampling.cpp
     Primitives.cpp
     Pose3D.cpp
-    utils.cpp)
+    utils.cpp
+    VariableSpeedConflict.cpp)
 
 set(DubinsFleetPlannerLib_INCL
     ${CMAKE_CURRENT_BINARY_DIR}

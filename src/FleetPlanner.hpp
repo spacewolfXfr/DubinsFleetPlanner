@@ -622,6 +622,7 @@ protected:
                 if (el->is_valid())
                 {
                     assert(abs(el->get_length() - target_len) < DubinsFleetPlanner_PRECISION);
+                    assert(abs(el->get_duration(stats[i]) - target_time) < DubinsFleetPlanner_PRECISION);
                 }
             }
         }

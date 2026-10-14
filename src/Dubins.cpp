@@ -389,7 +389,7 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
                                                  double duration, double min_dist, double tol, std::optional<double> hotstart, uint rec) const
 {
 #if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
-    assert((this_speed > 0) && (other_speed > 0));
+    assert((this_stats.airspeed >= 0) && (this_stats.target_airspeed >= 0) && (other_stats.target_airspeed >= 0) && (other_stats.airspeed >= 0));
     assert((this->is_valid()) && (other.is_valid()));
 #endif
 
@@ -508,7 +508,7 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
                                   double duration, double min_dist, double tol, std::optional<double> hotstart, uint rec) const
 {
 #if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
-    assert((this_speed > 0) && (other_speed > 0));
+    assert((this_stats.airspeed >= 0) && (this_stats.target_airspeed >= 0) && (other_stats.target_airspeed >= 0) && (other_stats.airspeed >= 0));
     assert((this->is_valid()) && (other.is_valid()));
 #endif
 
@@ -614,6 +614,14 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
 
     return true;
 }
+
+bool Dubins::are_XY_tdist_separated(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
+                                 double duration, double min_tdist,
+                                 double tol, uint rec)
+{
+    return true;
+}
+
 
 Dubins join_paths(const Dubins &first, const Dubins &second, double precision_tol)
 {

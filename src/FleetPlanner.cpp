@@ -100,7 +100,7 @@ double maxmin_dubins_traveltime(
 
                 this_ac_best_traveltime = std::min(
                     this_ac_best_traveltime,
-                    dd->get_length() / p.airspeed);
+                    dd->get_duration(p));
             }
         }
         else
@@ -113,7 +113,7 @@ double maxmin_dubins_traveltime(
                 s, e,
                 wind_x, wind_y);
 
-            this_ac_best_traveltime = dd->get_length() / p.airspeed;
+            this_ac_best_traveltime = dd->get_duration(p);
         }
 
         if (i == 0)
@@ -215,6 +215,9 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
         std::vector<std::unique_ptr<Dubins>> filtered_paths;
         AircraftStats stat = stats[i];
 
+        // filter_2D_geometric_colliding_paths: airspeed and target_airspeed should be equal for geometric filtering, or there should be no wind.
+        assert((std::abs(stat.airspeed - stat.target_airspeed) < DubinsFleetPlanner_ZERO_TOLERANCE) || (std::abs(wind_x) < DubinsFleetPlanner_ZERO_TOLERANCE && std::abs(wind_y) < DubinsFleetPlanner_ZERO_TOLERANCE));
+
         for (std::unique_ptr<Dubins> &p_ptr : path_list)
         {
             bool conflict_free = true;
@@ -232,10 +235,8 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
                         DynamicPathShape s_wind = s;
                         s_wind.x += wind_x * now;
                         s_wind.y += wind_y * now;
-                        s_wind.p1 += wind_x/(stat.airspeed/s.planar_speed());
-                        s_wind.p2 += wind_y/(stat.airspeed/s.planar_speed());
-
-                        // if (stat.id == 60) path_as_obstacles.push_back(s_wind);
+                        s_wind.p1 += wind_x / (stat.airspeed / s.planar_speed());
+                        s_wind.p2 += wind_y / (stat.airspeed / s.planar_speed());
 
                         for (uint j = 0; j < obstacles.size(); j++)
                         {
@@ -252,13 +253,13 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
                     {
                         // auto timed_poses = s.get_sampled_poses(100*min_sep / (2 * stat.airspeed), s.length / stat.airspeed);
 
-                        auto len_poses = s.get_sampled_poses(s.length/10);
-                        for(int k = 0; k < len_poses.size()-1; k++)
+                        auto len_poses = s.get_sampled_poses(s.length / 10);
+                        for (int k = 0; k < len_poses.size() - 1; k++)
                         {
-                            double t1 = std::get<0>(len_poses[k])/stat.airspeed;
+                            double t1 = std::get<0>(len_poses[k]) / stat.airspeed;
                             Pose3D p1 = std::get<1>(len_poses[k]);
-                            double t2 = std::get<0>(len_poses[k+1])/stat.airspeed;
-                            Pose3D p2 = std::get<1>(len_poses[k+1]);
+                            double t2 = std::get<0>(len_poses[k + 1]) / stat.airspeed;
+                            Pose3D p2 = std::get<1>(len_poses[k + 1]);
 
                             Pose3D p1_wind = p1;
                             p1_wind.x += wind_x * (t1 + now);
@@ -276,7 +277,7 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
                             {
                                 const DynamicPathShape &c = obstacles[j];
                                 std::tuple<double, double, double> res = geometric_XY_dist(segment, c, segment.duration(), c.duration());
-                                if (std::get<0>(res) <= 10*min_sep)
+                                if (std::get<0>(res) <= 10 * min_sep)
                                 {
                                     conflict_free = false;
                                     break;

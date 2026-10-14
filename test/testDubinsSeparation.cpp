@@ -186,8 +186,8 @@ static void generate_and_test_dubins_sep(AircraftStats a1, AircraftStats a2, dou
 class DubinsSeparation : public testing::TestWithParam<uint>
 {
 protected:
-    AircraftStats a1{1,1.,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB,0.,0.};
-    AircraftStats a2{2,1.,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB,0.,0.};
+    AircraftStats a1{1,1.,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB,-5.,5.};
+    AircraftStats a2{2,1.,1.,TEST_MIN_TURN_RADIUS,TEST_CLIMB,-5.,5.};
 
     double min_separation = TEST_MIN_SEPARATION;
 
