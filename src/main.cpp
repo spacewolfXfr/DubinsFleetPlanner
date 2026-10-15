@@ -72,6 +72,7 @@ struct program_arguments
     double separation;
     string wind_x_str,wind_y_str;
     double wind_x,wind_y;
+    bool timedistance;
     bool reallocate;
     bool allow_shortest;
     vector<double> start_length_extensions,end_length_extensions;
@@ -299,7 +300,7 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
                         " Format is described in 'USAGE.md'." )
 
     ("separation"   , po::value<double>(&parsed_args.separation)->required()
-                    ,"REQUIRED, positional. Minimal required XY separation between aircraft")
+                    ,"REQUIRED, positional. Minimal required XY separation between aircraft. By default, is expressed as distance. If --tdist is set, it is expressed as time, to be multiplied by the aircraft's speed.")
     
     ("wind-x"       , po::value<string>(&parsed_args.wind_x_str)->default_value("0.")
                     ,"Positional. Wind speed along the X axis. Needs to be simple quoted, as in '-1.' (safeguard for negative values). Default to '0.'")
@@ -309,6 +310,8 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
 
     ("reallocate,A" , po::bool_switch(&parsed_args.reallocate)->default_value(false)
                     , "Flag. If set, allows aircraft to switch endpoints.")
+    ("tdist,D"      , po::bool_switch(&parsed_args.timedistance)->default_value(false)
+                    , "Flag. If set, interpret separation as time.")
 
     ("obstacles,O"  , po::value<string>(&parsed_args.obstacle_pathname)->default_value("")
                     , "Path to a JSON file describing multiple paths to be considered as obstacles")
@@ -457,7 +460,6 @@ bool process_command_line(int argc, char* argv[], program_arguments& parsed_args
 
 void write_result(const fs::path& out_filepath, vector<Dubins>& sol, vector<AircraftStats>& stats, program_arguments& args)
 {
-
     std::ofstream out_data(out_filepath);
     
     string ext;
@@ -499,8 +501,6 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 {
 
     // ----- Parsing obstacle trajectories if existing ----- //
-
-    
 
     std::vector<Dubins> obstacle_paths = {};
     std::vector<AircraftStats> obstacle_stats = {};
@@ -668,23 +668,50 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
 
     if (!empty_timeslots)
     {
-        planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,extra,starts,ends,stats,args.separation,timeslots,
-            args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
-            obstacle_paths,obstacle_stats,obstacle_delays,geometric_obstacles
-            );
+        if (args.timedistance)
+        {
+            planner->solve_with_timeslots<Dubins::are_XY_tdist_separated_sampling,Dubins::sampling_XY_tdistance>(sols,extra,starts,ends,stats,args.separation,timeslots,
+                args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
+                obstacle_paths,obstacle_stats,obstacle_delays,geometric_obstacles
+                );
+        }
+        else
+        {
+            planner->solve_with_timeslots<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,extra,starts,ends,stats,args.separation,timeslots,
+                args.wind_x,args.wind_y,args.thread_num,args.allow_shortest,
+                obstacle_paths,obstacle_stats,obstacle_delays,geometric_obstacles
+                );
+        }
+        
     }
     else
     {
-        planner->solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,extra,starts,ends,stats,
-            args.separation,dt,
-            args.wind_x,args.wind_y,
-            args.reallocate,
-            args.max_iters,
-            args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
-            args.thread_num,
-            args.max_solver_time,
-            obstacle_paths,obstacle_stats,obstacle_delays,
-            geometric_obstacles);
+        if (args.timedistance)
+        {
+            planner->solve<Dubins::are_XY_tdist_separated_sampling,Dubins::sampling_XY_tdistance>(sols,extra,starts,ends,stats,
+                args.separation,dt,
+                args.wind_x,args.wind_y,
+                args.reallocate,
+                args.max_iters,
+                args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
+                args.thread_num,
+                args.max_solver_time,
+                obstacle_paths,obstacle_stats,obstacle_delays,
+                geometric_obstacles);
+        }
+        else
+        {
+            planner->solve<Dubins::are_XY_separated,Dubins::compute_XY_distance>(sols,extra,starts,ends,stats,
+                args.separation,dt,
+                args.wind_x,args.wind_y,
+                args.reallocate,
+                args.max_iters,
+                args.weave_iters,args.min_weave_dist,args.min_weave_dist_percent,
+                args.thread_num,
+                args.max_solver_time,
+                obstacle_paths,obstacle_stats,obstacle_delays,
+                geometric_obstacles);
+        }
     }
 
     extra.duration = chrono::thread_clock::now(boost::throws()) - start;
@@ -698,7 +725,14 @@ std::tuple<int,std::vector<Dubins>,ExtraPPResults> solve_case(const fs::path& in
     {
         if (good_solution)
         {
-            extra.false_positive = !check_solution<Dubins::are_XY_separated_sampling>(sols,stats,args.separation);
+            if (args.timedistance)
+            {
+                extra.false_positive = !check_solution<Dubins::are_XY_tdist_separated_sampling>(sols,stats,args.separation);
+            }
+            else
+            {
+                extra.false_positive = !check_solution<Dubins::are_XY_separated_sampling>(sols,stats,args.separation);
+            }
             if (extra.false_positive)
             {
                 good_solution = false;
