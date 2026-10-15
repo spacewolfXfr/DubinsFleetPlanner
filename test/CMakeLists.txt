@@ -124,6 +124,7 @@ endmacro()
 
 make_DubinsPathPlanning_test(TestGeometricDistance testGeometricDistance.cpp)
 make_DubinsPathPlanning_test(TestTemporalDistance testTemporalDistance.cpp)
+make_DubinsPathPlanning_test(TestTemporalDistanceVSpeed testTemporalDistanceVSpeed.cpp)
 make_DubinsPathPlanning_test(TestDubinsSeparation testDubinsSeparation.cpp)
 
 

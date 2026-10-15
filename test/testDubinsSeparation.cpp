@@ -131,7 +131,9 @@ static void generate_and_test_dubins_sep(AircraftStats a1, AircraftStats a2, dou
     double p2_speed = dis_speedn(gen);
 
     a1.airspeed = p1_speed;
+    a1.target_airspeed = p1_speed;
     a2.airspeed = p2_speed;
+    a2.target_airspeed = p2_speed;
 
     // Draw paths before fitting
     std::vector<std::unique_ptr<Dubins>> p1_possibilities = list_possible_baseDubins(1.,TEST_MIN_TURN_RADIUS,p1_start,p1_end);

@@ -6,6 +6,8 @@
 
 #include <ScalarMin/IntervalSolver.hpp>
 
+#include "ConflictDetection.hpp"
+
 #include "ConflictTrajectories/linAccLineCircle.hpp"
 #include "ConflictTrajectories/linAccCircleCircle.hpp"
 
@@ -45,6 +47,15 @@ std::pair<double, double> temporal_XY_time_slack_straights(const DynamicPathShap
     Eigen::Vector2d dp(s1.x - s2.x, s1.y - s2.y);
     Eigen::Vector2d n1(s1.p1, s1.p2);
     Eigen::Vector2d n2(s2.p1, s2.p2);
+
+    // No acceleration: lower degree polynomial
+    if (std::abs(a1) < DubinsFleetPlanner_ZERO_TOLERANCE && std::abs(a2) < DubinsFleetPlanner_ZERO_TOLERANCE)
+    {
+        double separation = tdist * std::max(v1, v2);
+        std::pair<double, double> result = temporal_XY_dist(s1, s2, s1_stats, s2_stats, duration, tol);
+        result.second = result.second*result.second - separation*separation;
+        return result;
+    }
 
     // Compute the polynomial coefficients for the distance function with slack
     // The distance is given by: d(t) = ||p1(t) - p2(t)||^2
@@ -199,7 +210,7 @@ std::pair<double, double> temporal_XY_time_slack_circles(const DynamicPathShape 
     path_set_planar_speed(s1_cpy, 1.);
     path_set_planar_speed(s2_cpy, 1.);
 
-    LinAccCircleCircle problem(s1_cpy, s2_cpy, a1, v1, a2, v2, tdist);
+    LinAccCircleCircleVDist problem(s1_cpy, s2_cpy, a1, v1, a2, v2, tdist);
 
     auto fbind = [problem](double x)
     { return problem.f(x); };

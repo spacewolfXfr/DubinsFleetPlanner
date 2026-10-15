@@ -101,6 +101,26 @@ DynamicPathShape generate_random_dynamic_shape(DubinsMove m, int seed, double ra
     return output;
 }
 
+AircraftStats generate_random_aircraft_stats(int seed, double min_radius, double max_radius, double min_speed, double max_speed, double max_acc)
+{
+    std::default_random_engine gen(seed); // Some seeded RNG 
+
+    std::uniform_real_distribution<double> dis_turn_radius(min_radius, max_radius);
+    std::uniform_real_distribution<double> dis_speedn(min_speed, max_speed);
+
+    AircraftStats output;
+
+    output.id = seed;
+    output.airspeed = dis_speedn(gen);
+    output.target_airspeed = dis_speedn(gen);
+    output.turn_radius = dis_turn_radius(gen);
+    output.climb = dis_speedn(gen)/10;
+    output.max_acceleration = max_acc;
+    output.min_acceleration = -max_acc;
+
+    return output;
+}
+
 [[gnu::const]]
 inline Eigen::Vector2d angle_vector(double angle)
 {

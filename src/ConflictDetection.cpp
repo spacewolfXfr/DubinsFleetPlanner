@@ -1267,7 +1267,11 @@ std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathSha
 
     if (std::abs(s1_stats.airspeed - s1_stats.target_airspeed) < tol && std::abs(s2_stats.airspeed - s2_stats.target_airspeed) < tol)
     {
-        CircleCircle problem(s1,s2);
+        // If speed is not changing, use the LineCircle definition
+        path_set_planar_speed(s1_cpy,s1_stats.airspeed);
+        path_set_planar_speed(s2_cpy,s2_stats.airspeed);
+
+        CircleCircle problem(s1_cpy,s2_cpy);
 
         auto fbind = [problem](double x){return problem.f(x);};
         auto Fbind = [problem](const IntervalSolver::interval<double,Policies> &I){return problem.F(I);};
