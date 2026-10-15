@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <vector>
+#include <exception>
 
 // -------------------- General util -------------------- //
 
@@ -75,6 +76,12 @@ size_t binary_search(std::vector<T> vec, T val)
     } while (end-start > 1);
     return start;
 }
+
+class NotImplemented : public std::logic_error
+{
+public:
+    NotImplemented() : std::logic_error("Function not yet implemented") { };
+};
 
 // -------------------- General maths -------------------- //
 

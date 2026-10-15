@@ -79,7 +79,7 @@ namespace Visualisation
         double len = path.get_length();
         auto lens = linspace(0,len,samples);
         std::vector<double> lens_vec{std::begin(lens),std::end(lens)};
-        std::vector<Pose3D> poses = path.get_positions(lens_vec,true);
+        std::vector<Pose3D> poses = path.get_positions_at_lengths(lens_vec,true);
 
         for(unsigned i = 0; i < samples; i++)
         {
@@ -96,10 +96,10 @@ namespace Visualisation
         static_assert(samples > 1);
         
         std::valarray<double> xs(samples),ys(samples);
-        double duration = path.get_duration(stats);
+        double duration = path.get_duration();
         auto times = linspace(0,duration,samples);
         std::vector<double> time_vec{std::begin(times),std::end(times)};
-        std::vector<Pose3D> poses = path.get_positions(time_vec,stats,true);
+        std::vector<Pose3D> poses = path.get_positions_at_times(time_vec,true);
 
         for(unsigned i = 0; i < samples; i++)
         {
@@ -183,7 +183,7 @@ namespace Visualisation
         for(uint i = 0; i < N; i++)
         {
             const auto& d = dubins[i];
-            max_time = std::max(max_time, d.get_duration(stats[i]));
+            max_time = std::max(max_time, d.get_duration());
             Visualisation::plot_path<samples>(plot,d, stats[i], wind_x, wind_y)
                 .label(std::to_string(i) + std::string(": ") + d.get_type_abbr() + std::format(" ( {:.3f} )",d.get_length()))
                 .lineColor(Visualisation::get_color(i));
@@ -193,8 +193,8 @@ namespace Visualisation
                 .lineColor(Visualisation::get_color(i));
 
             Pose3D airref_end = d.get_end();
-            airref_end.x += wind_x*d.get_duration(stats[i]);
-            airref_end.y += wind_y*d.get_duration(stats[i]);
+            airref_end.x += wind_x*d.get_duration();
+            airref_end.y += wind_y*d.get_duration();
             Visualisation::plot_pose(plot,airref_end)
                 .labelNone()//.label(std::to_string(i) + std::string(": End"))
                 .lineColor(Visualisation::get_color(i));
@@ -212,13 +212,13 @@ namespace Visualisation
             std::vector<Pose3D> poses(N);
             for(uint j = 0; j < N; j++)
             {
-                if (ctime > dubins[j].get_duration(stats[j]))
+                if (ctime > dubins[j].get_duration())
                 {
                     poses[j] = UndefPose;
                 }
                 else
                 {
-                    poses[j] = dubins[j].get_position(ctime,stats[j]);
+                    poses[j] = dubins[j].get_position_at_time(ctime);
                 }
             }
 
@@ -236,8 +236,8 @@ namespace Visualisation
         }
 
 
-        Pose3D p1 = dubins[ac_id_1].get_position(min_dist_time,stats[ac_id_1]);
-        Pose3D p2 = dubins[ac_id_2].get_position(min_dist_time,stats[ac_id_2]);
+        Pose3D p1 = dubins[ac_id_1].get_position_at_time(min_dist_time);
+        Pose3D p2 = dubins[ac_id_2].get_position_at_time(min_dist_time);
 
         Visualisation::plot_line(plot,
                     p1.x+wind_x*min_dist_time,

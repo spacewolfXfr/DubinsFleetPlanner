@@ -18,6 +18,7 @@
 #include "Dubins.hpp"
 
 #include "ConflictDetection.hpp"
+#include "utils.hpp"
 
 // ---------- Set up functions ---------- //
 
@@ -54,7 +55,7 @@ void Dubins::recompute()
 
 // ---------- Compute position ---------- //
 
-Pose3D Dubins::get_position(double len) const
+Pose3D Dubins::get_position_at_length(double len) const
 {
     uint i = 0;
     uint N = sections.size();
@@ -79,14 +80,14 @@ Pose3D Dubins::get_position(double len) const
     return follow_dubins(s, len);
 }
 
-const std::vector<Pose3D> Dubins::get_positions(std::vector<double> &lens, bool sorted) const
+const std::vector<Pose3D> Dubins::get_positions_at_lengths(std::vector<double> &lens, bool sorted) const
 {
     std::vector<Pose3D> output;
     if (!sorted)
     {
         for (const double &l : lens)
         {
-            output.push_back(get_position(l));
+            output.push_back(get_position_at_length(l));
         }
     }
     else
@@ -118,7 +119,7 @@ const std::vector<Pose3D> Dubins::get_positions(std::vector<double> &lens, bool 
     return output;
 }
 
-Dubins Dubins::follow_for(double len) const
+Dubins Dubins::follow_for_length(double len) const
 {
     if (len < 0)
     {
@@ -152,8 +153,10 @@ Dubins Dubins::follow_for(double len) const
     DynamicPathShape s = sections[i];
     std::vector<DynamicPathShape> new_sections(sections.begin() + i, sections.end());
     new_sections[0] = shift_start(s, len);
+    double travel_time = get_time_at_length(len);
+    SpeedProfile new_profile = speed_profile.shifted_by_time(travel_time);
 
-    return Dubins(new_sections[0].initial_pose(), end, new_sections);
+    return Dubins(new_sections[0].initial_pose(), end, new_sections, new_profile);
 }
 
 // ---------- Local template for computing separation between shapes ---------- //
@@ -164,6 +167,8 @@ Dubins Dubins::follow_for(double len) const
  * @tparam use_derivatives Use derivatives based global minimum seeking method. Default to true.
  * @param p1 First path
  * @param p2 Second path
+ * @param p1_prof Speed profile of the first path
+ * @param p2_prof Speed profile of the second path
  * @param duration Time duration of the section to study
  * @param min_sep Minial required distance
  * @param tol Precision with respect
@@ -171,19 +176,19 @@ Dubins Dubins::follow_for(double len) const
  */
 template <bool use_derivatives = true>
 std::pair<double, double> compute_XY_separation(
-    const DynamicPathShape &p1, const DynamicPathShape &p2, const AircraftStats& p1_stats, const AircraftStats& p2_stats,
+    const DynamicPathShape &p1, const DynamicPathShape &p2, const SpeedProfile& p1_prof, const SpeedProfile& p2_prof,
     double duration, double min_sep, double tol,
     uint rec = DubinsDistDefaultRec)
 {
     std::pair<double, double> output;
 
-    double v1_S = speed_at_time(p1_stats,0,duration);
-    double v1_M = speed_at_time(p1_stats,duration/2.,duration);
-    double v1_E = speed_at_time(p1_stats,duration,duration);
+    double v1_S = p1_prof.get_speed_at_time(0.);
+    double v1_M = p1_prof.get_speed_at_time(duration/2);
+    double v1_E = p1_prof.get_speed_at_time(duration);
 
-    double v2_S = speed_at_time(p1_stats,0,duration);
-    double v2_M = speed_at_time(p1_stats,duration/2.,duration);
-    double v2_E = speed_at_time(p1_stats,duration,duration);
+    double v2_S = p2_prof.get_speed_at_time(0.);
+    double v2_M = p2_prof.get_speed_at_time(duration/2);
+    double v2_E = p2_prof.get_speed_at_time(duration);
 
     DubinsMove m1 = p1.m;
     DubinsMove m2 = p2.m;
@@ -205,7 +210,7 @@ std::pair<double, double> compute_XY_separation(
     {
         output = temporal_XY_dist<STRAIGHT, STRAIGHT, true>(
             to_static_shape<STRAIGHT>(p1),
-            to_static_shape<STRAIGHT>(p2), p1_stats, p2_stats, duration, tol);
+            to_static_shape<STRAIGHT>(p2), p1_prof, p2_prof, duration, tol);
     }
     else
     {
@@ -228,21 +233,17 @@ std::pair<double, double> compute_XY_separation(
                 path_set_planar_speed(p1_cpy,1.);
                 path_set_planar_speed(p2_cpy,1.);
 
-                double l1 = length_traveled(p1_stats,duration/2.,duration);
-                double l2 = length_traveled(p2_stats,duration/2.,duration);
+                double l1 = p1_prof.get_length_at_time(duration/2);
+                double l2 = p2_prof.get_length_at_time(duration/2);
 
                 auto shifted_p1 = shift_start(p1_cpy, l1);
                 auto shifted_p2 = shift_start(p2_cpy, l2);
 
-                AircraftStats p1_first_half  = p1_stats;
-                p1_first_half.target_airspeed = v1_M;
-                AircraftStats p2_first_half  = p2_stats;
-                p2_first_half.target_airspeed = v2_M;
+                SpeedProfile p1_first_half  = p1_prof;
+                SpeedProfile p2_first_half  = p2_prof;
 
-                AircraftStats p1_second_half = p1_stats;
-                p1_second_half.airspeed = v1_M;
-                AircraftStats p2_second_half = p2_stats;
-                p2_second_half.airspeed = v2_M;
+                SpeedProfile p1_second_half = p1_prof.shifted_by_time(duration/2);
+                SpeedProfile p2_second_half = p2_prof.shifted_by_time(duration/2);
 
                 // If the geometric test suggests there is a collision in the second half, look at the second half first
                 if (t1 >= duration / 2 && t2 >= duration / 2)
@@ -297,7 +298,7 @@ std::pair<double, double> compute_XY_separation(
             }
             else // Otherwise, fallback on temporal method
             {
-                output = temporal_XY_dist<use_derivatives>(p1, p2, p1_stats, p2_stats, duration, tol);
+                output = temporal_XY_dist<use_derivatives>(p1, p2, p1_prof, p2_prof, duration, tol);
             }
         }
         // Otherwise, use the result of the geometric separation
@@ -323,25 +324,25 @@ std::pair<double, double> compute_XY_separation(
  * @param duration Duration for which we follow the path
  * @return std::vector<double> List of junctions timestamps
  */
-static std::vector<double> compute_timepoints(const Dubins &p1, const Dubins &p2, const AircraftStats& p1_stats, const AircraftStats& p2_stats, double &duration)
+static std::vector<double> compute_timepoints(const Dubins &p1, const Dubins &p2, double &duration)
 {
     std::vector<double> timepoints = {0.};
 
     std::vector<double> p1_junctions = p1.get_junction_locs();
     std::vector<double> p2_junctions = p2.get_junction_locs();
-    double p1_duration = p1.get_duration(p1_stats);
-    double p2_duration = p2.get_duration(p2_stats);
+    double p1_duration = p1.get_duration();
+    double p2_duration = p2.get_duration();
 
     std::vector<double> p1_junctions_times;
     for(const double &l : p1_junctions)
     {
-        p1_junctions_times.push_back(time_to_travel_length(p1_stats, l, p1_duration));
+        p1_junctions_times.push_back(p1.get_time_at_length(l));
     }
 
     std::vector<double> p2_junctions_times;
     for(const double &l : p2_junctions)
     {
-        p2_junctions_times.push_back(time_to_travel_length(p2_stats, l, p2_duration));
+        p2_junctions_times.push_back(p2.get_time_at_length(l));
     }
 
     size_t p1_index = 0;
@@ -385,15 +386,17 @@ static std::vector<double> compute_timepoints(const Dubins &p1, const Dubins &p2
 }
 
 
-std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const AircraftStats& this_stats, const AircraftStats& other_stats,
+
+std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, 
                                                  double duration, double min_dist, double tol, std::optional<double> hotstart, uint rec) const
 {
 #if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
-    assert((this_stats.airspeed >= 0) && (this_stats.target_airspeed >= 0) && (other_stats.target_airspeed >= 0) && (other_stats.airspeed >= 0));
     assert((this->is_valid()) && (other.is_valid()));
+    assert(duration >= 0);
+    assert(duration <= get_duration() && duration <= other.get_duration());
 #endif
 
-    std::vector<double> timepoints = compute_timepoints(*this, other, this_stats, other_stats, duration);
+    std::vector<double> timepoints = compute_timepoints(*this, other, duration);
     std::pair<double, double> output = {0., INFINITY};
 
     size_t index; // Path section index for hot start
@@ -405,11 +408,11 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
 
         std::vector<double> times{timepoints[index], timepoints[index + 1]};
 
-        const DynamicPathShape &curr_ref_shape = this->get_pathshape((times.front() + times.back()) / 2);
-        const DynamicPathShape &other_ref_shape = other.get_pathshape((times.front() + times.back()) / 2);
+        const DynamicPathShape &curr_ref_shape = this->get_pathshape_at_length((times.front() + times.back()) / 2);
+        const DynamicPathShape &other_ref_shape = other.get_pathshape_at_length((times.front() + times.back()) / 2);
 
-        std::vector<Pose3D> curr_poses = this->get_positions(times, this_stats, true);
-        std::vector<Pose3D> other_poses = other.get_positions(times, other_stats, true);
+        std::vector<Pose3D> curr_poses = this->get_positions_at_times(times, true);
+        std::vector<Pose3D> other_poses = other.get_positions_at_times(times, true);
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses.front(), curr_poses.back(),
                                     1., curr_ref_shape.p1, curr_ref_shape.p3);
@@ -417,15 +420,9 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
         DynamicPathShape other_shape(other_ref_shape.m, other_poses.front(), other_poses.back(),
                                      1., other_ref_shape.p1, other_ref_shape.p3);
 
-
-        AircraftStats curr_stats    = this_stats;
-        AircraftStats curr_other_stats   = other_stats;
-
-        curr_stats.airspeed  = speed_at_time(this_stats, timepoints[index], duration);
-        curr_other_stats.airspeed = speed_at_time(other_stats, timepoints[index], duration);
-
-        curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[index + 1], duration);
-        curr_other_stats.target_airspeed = speed_at_time(other_stats, timepoints[index + 1], duration);                     
+        SpeedProfile curr_stats = speed_profile.shifted_by_time(times.front());
+        SpeedProfile curr_other_stats = other.speed_profile.shifted_by_time(times.front());
+                
         std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats,sec_duration, min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
@@ -442,8 +439,8 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
         index = timepoints.size(); // Return past-the-post value to avoid skipping
     }
 
-    std::vector<Pose3D> curr_poses = this->get_positions(timepoints, this_stats, true);
-    std::vector<Pose3D> other_poses = other.get_positions(timepoints, other_stats, true);
+    std::vector<Pose3D> curr_poses = this->get_positions_at_times(timepoints, true);
+    std::vector<Pose3D> other_poses = other.get_positions_at_times(timepoints, true);
 
     std::vector<double> curr_endlocs = this->get_endpoints_locs();
     std::vector<double> other_endlocs = other.get_endpoints_locs();
@@ -455,12 +452,12 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
     for (size_t i = 0; i < timepoints.size() - 1; i++)
     {
         // Update section tracker
-        if (curr_endlocs[curr_sec_index + 1] < length_traveled(this_stats,timepoints[i + 1],duration) * (1 - 1e-6))
+        if (curr_endlocs[curr_sec_index + 1] < get_length_at_time(timepoints[i + 1]) * (1 - 1e-6))
         {
             curr_sec_index++;
         }
 
-        if (other_endlocs[other_sec_index + 1] < length_traveled(other_stats,timepoints[i + 1],duration) * (1 - 1e-6))
+        if (other_endlocs[other_sec_index + 1] < other.get_length_at_time(timepoints[i + 1]) * (1 - 1e-6))
         {
             other_sec_index++;
         }
@@ -480,14 +477,8 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
         DynamicPathShape other_shape(other_ref_shape.m, other_poses[i], other_poses[i + 1],
                                      1., other_ref_shape.p1, other_ref_shape.p3);
 
-        AircraftStats curr_stats    = this_stats;
-        AircraftStats curr_other_stats   = other_stats;
-
-        curr_stats.airspeed  = speed_at_time(this_stats, timepoints[i], duration);
-        curr_other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
-
-        curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[i + 1], duration);
-        curr_other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
+        SpeedProfile curr_stats = speed_profile.shifted_by_time(timepoints[i]);
+        SpeedProfile curr_other_stats = other.speed_profile.shifted_by_time(timepoints[i]);
 
         std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
 
@@ -504,15 +495,16 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
     return output;
 }
 
-bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this_stats, const AircraftStats& other_stats,
+bool Dubins::is_XY_separated_from(const Dubins &other,
                                   double duration, double min_dist, double tol, std::optional<double> hotstart, uint rec) const
 {
 #if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
-    assert((this_stats.airspeed >= 0) && (this_stats.target_airspeed >= 0) && (other_stats.target_airspeed >= 0) && (other_stats.airspeed >= 0));
     assert((this->is_valid()) && (other.is_valid()));
+    assert(duration >= 0);
+    assert(duration <= get_duration() && duration <= other.get_duration());
 #endif
 
-    std::vector<double> timepoints = compute_timepoints(*this, other, this_stats, other_stats, duration);
+    std::vector<double> timepoints = compute_timepoints(*this, other, duration);
     std::pair<double, double> output = {0., INFINITY};
 
     size_t index; // Path section index for hot start
@@ -520,15 +512,15 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
     if (hotstart.has_value())
     {
         index = binary_search(timepoints, hotstart.value());
-        double duration = timepoints[index + 1] - timepoints[index];
+        double dur = timepoints[index + 1] - timepoints[index];
 
         std::vector<double> times{timepoints[index], timepoints[index + 1]};
 
-        const DynamicPathShape &curr_ref_shape = this->get_pathshape((times.front() + times.back()) / 2);
-        const DynamicPathShape &other_ref_shape = other.get_pathshape((times.front() + times.back()) / 2);
+        const DynamicPathShape &curr_ref_shape = this->get_pathshape_at_length((times.front() + times.back()) / 2);
+        const DynamicPathShape &other_ref_shape = other.get_pathshape_at_length((times.front() + times.back()) / 2);
 
-        std::vector<Pose3D> curr_poses = this->get_positions(times, this_stats, true);
-        std::vector<Pose3D> other_poses = other.get_positions(times, other_stats, true);
+        std::vector<Pose3D> curr_poses = this->get_positions_at_times(times, true);
+        std::vector<Pose3D> other_poses = other.get_positions_at_times(times, true);
 
         DynamicPathShape curr_shape(curr_ref_shape.m, curr_poses.front(), curr_poses.back(),
                                     1., curr_ref_shape.p1, curr_ref_shape.p3);
@@ -536,16 +528,10 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
         DynamicPathShape other_shape(other_ref_shape.m, other_poses.front(), other_poses.back(),
                                      1., other_ref_shape.p1, other_ref_shape.p3);
 
-        AircraftStats curr_stats    = this_stats;
-        AircraftStats curr_other_stats   = other_stats;
+        SpeedProfile curr_stats = speed_profile.shifted_by_time(times.front());
+        SpeedProfile curr_other_stats = other.speed_profile.shifted_by_time(times.front());
 
-        curr_stats.airspeed  = speed_at_time(this_stats, times.front(), duration);
-        curr_other_stats.airspeed = speed_at_time(other_stats, times.front(), duration);
-
-        curr_stats.target_airspeed  = speed_at_time(this_stats, times.back(), duration);
-        curr_other_stats.target_airspeed = speed_at_time(other_stats, times.back(), duration);
-
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats, duration, min_dist, tol, rec);
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats, dur, min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {
@@ -557,8 +543,8 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
         index = timepoints.size(); // Return past-the-post value to avoid skipping
     }
 
-    std::vector<Pose3D> curr_poses = this->get_positions(timepoints, this_stats, true);
-    std::vector<Pose3D> other_poses = other.get_positions(timepoints, other_stats, true);
+    std::vector<Pose3D> curr_poses = this->get_positions_at_times(timepoints, true);
+    std::vector<Pose3D> other_poses = other.get_positions_at_times(timepoints, true);
 
     std::vector<double> curr_endlocs = this->get_endpoints_locs();
     std::vector<double> other_endlocs = other.get_endpoints_locs();
@@ -570,12 +556,12 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
     for (size_t i = 0; i < timepoints.size() - 1; i++)
     {
         // Update section tracker
-        if (curr_endlocs[curr_sec_index + 1] < length_traveled(this_stats,timepoints[i + 1],duration) * (1 - 1e-6))
+        if (curr_endlocs[curr_sec_index + 1] < get_length_at_time(timepoints[i + 1]) * (1 - 1e-6))
         {
             curr_sec_index++;
         }
 
-        if (other_endlocs[other_sec_index + 1] < length_traveled(other_stats,timepoints[i + 1],duration) * (1 - 1e-6))
+        if (other_endlocs[other_sec_index + 1] < other.get_length_at_time(timepoints[i + 1]) * (1 - 1e-6))
         {
             other_sec_index++;
         }
@@ -595,14 +581,8 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
         DynamicPathShape other_shape(other_ref_shape.m, other_poses[i], other_poses[i + 1],
                                      1., other_ref_shape.p1, other_ref_shape.p3);
 
-        AircraftStats curr_stats    = this_stats;
-        AircraftStats curr_other_stats   = other_stats;
-
-        curr_stats.airspeed  = speed_at_time(this_stats, timepoints[i], duration);
-        curr_other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
-
-        curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[i + 1], duration);
-        curr_other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
+        SpeedProfile curr_stats = speed_profile.shifted_by_time(timepoints[i]);
+        SpeedProfile curr_other_stats = other.speed_profile.shifted_by_time(timepoints[i]);
 
         std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
 
@@ -615,10 +595,11 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
     return true;
 }
 
-bool Dubins::are_XY_tdist_separated(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
+bool Dubins::are_XY_tdist_separated(const Dubins &first, const Dubins &second,
                                  double duration, double min_tdist,
                                  double tol, uint rec)
 {
+    throw NotImplemented();
     return true;
 }
 
@@ -638,6 +619,6 @@ Dubins join_paths(const Dubins &first, const Dubins &second, double precision_to
     auto joined_sections = first.get_all_sections();
     joined_sections.insert(joined_sections.end(), second.get_all_sections().begin(), second.get_all_sections().end());
 
-    Dubins joined(first.get_start(), second.get_end(), joined_sections);
+    Dubins joined(first.get_start(), second.get_end(), joined_sections, first.speed_profile);
     return joined;
 }

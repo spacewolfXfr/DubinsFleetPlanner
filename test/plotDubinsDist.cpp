@@ -139,8 +139,8 @@ int main()
                 {
                     std::cout << " ERROR: Found " << sampled.second << " at time " << sampled.first << std::endl
                         << "-> Intersection of type "
-                        << get_DubinsMove_name(d1->get_section_type(sampled.first)) 
-                        << " - " << get_DubinsMove_name(d2->get_section_type(sampled.first)) << std::endl;
+                        << get_DubinsMove_name(d1->get_section_type_at_length(sampled.first)) 
+                        << " - " << get_DubinsMove_name(d2->get_section_type_at_length(sampled.first)) << std::endl;
                 }
             }
             else

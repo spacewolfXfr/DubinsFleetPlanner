@@ -194,27 +194,26 @@ uint number_of_valid_paths(ListOfPossibilities& list);
 
 
 template<Dubins::DubinsSeparationFunction separation_function>
-static inline bool generic_check_compatibility(const Dubins& d1, const Dubins& d2, const AircraftStats& s1, const AircraftStats& s2, double sep)
+static inline bool generic_check_compatibility(const Dubins& d1, const Dubins& d2, double sep)
 {
-    double duration = std::min(d1.get_duration(s1),d2.get_duration(s2));
-    return d1.is_valid() && d2.is_valid() && separation_function(d1,d2,s1,s2,duration,sep,DubinsFleetPlanner_PRECISION,DubinsDistDefaultRec);
+    double duration = std::min(d1.get_duration(),d2.get_duration());
+    return d1.is_valid() && d2.is_valid() && separation_function(d1,d2,duration,sep,DubinsFleetPlanner_PRECISION,DubinsDistDefaultRec);
 }
 
 template<Dubins::DubinsDistanceFunction distance_function>
 static inline std::pair<double,double> generic_compute_distance(
     const Dubins& d1, const Dubins& d2, 
-    const AircraftStats& s1, const AircraftStats& s2, 
     double sep,
     std::optional<double> hotstart = std::nullopt)
 {
-    double duration = std::min(d1.get_duration(s1),d2.get_duration(s2));
+    double duration = std::min(d1.get_duration(),d2.get_duration());
     if (!(d1.is_valid() && d2.is_valid()))
     {
         return std::make_pair(0.,INFINITY);
     }
     else
     {
-        return distance_function(d1,d2,s1,s2,duration,sep,DubinsFleetPlanner_PRECISION,hotstart,DubinsDistDefaultRec);
+        return distance_function(d1,d2,duration,sep,DubinsFleetPlanner_PRECISION,hotstart,DubinsDistDefaultRec);
     }
 }
 

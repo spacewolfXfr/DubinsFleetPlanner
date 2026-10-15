@@ -34,15 +34,15 @@ static double p4_eval(double x, double a4, double a3, double a2, double a1, doub
 /************************* STRAIGHT - STRAIGHT *************************/
 
 std::pair<double, double> temporal_XY_time_slack_straights(const DynamicPathShape &s1, const DynamicPathShape &s2,
-                                                           const AircraftStats &s1_stats, const AircraftStats &s2_stats, double duration, double tdist, double tol)
+                                                           const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration, double tdist, double tol)
 {
     assert(s1.m == STRAIGHT && s2.m == STRAIGHT);
 
     // Gather parameters
-    double a1 = (s1_stats.target_airspeed - s1_stats.airspeed) / duration;
-    double v1 = s1_stats.airspeed;
-    double a2 = (s2_stats.target_airspeed - s2_stats.airspeed) / duration;
-    double v2 = s2_stats.airspeed;
+    double a1 = s1_prof.acceleration;
+    double v1 = s1_prof.base_speed;
+    double a2 = s2_prof.acceleration;
+    double v2 = s2_prof.base_speed;
 
     Eigen::Vector2d dp(s1.x - s2.x, s1.y - s2.y);
     Eigen::Vector2d n1(s1.p1, s1.p2);
@@ -52,7 +52,7 @@ std::pair<double, double> temporal_XY_time_slack_straights(const DynamicPathShap
     if (std::abs(a1) < DubinsFleetPlanner_ZERO_TOLERANCE && std::abs(a2) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
         double separation = tdist * std::max(v1, v2);
-        std::pair<double, double> result = temporal_XY_dist(s1, s2, s1_stats, s2_stats, duration, tol);
+        std::pair<double, double> result = temporal_XY_dist(s1, s2, s1_prof, s2_prof, duration, tol);
         result.second = result.second*result.second - separation*separation;
         return result;
     }
@@ -132,7 +132,7 @@ std::pair<double, double> temporal_XY_time_slack_straights(const DynamicPathShap
 
 template <bool use_derivatives>
 std::pair<double, double> temporal_XY_time_slack_lineCircle(const DynamicPathShape &s1, const DynamicPathShape &s2,
-                                                            const AircraftStats &s1_stats, const AircraftStats &s2_stats, double duration, double tdist, double tol)
+                                                            const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration, double tdist, double tol)
 {
     typedef OptimizationRounding::fast_rounding<double> Policies;
 
@@ -141,10 +141,10 @@ std::pair<double, double> temporal_XY_time_slack_lineCircle(const DynamicPathSha
     auto s1_cpy = s1;
     auto s2_cpy = s2;
 
-    double aL = (s1_stats.target_airspeed - s1_stats.airspeed) / duration;
-    double vL = s1_stats.airspeed;
-    double aC = (s2_stats.target_airspeed - s2_stats.airspeed) / duration;
-    double vC = s2_stats.airspeed;
+    double aL = s1_prof.acceleration;
+    double vL = s1_prof.base_speed;
+    double aC = s2_prof.acceleration;
+    double vC = s2_prof.base_speed;
 
     path_set_planar_speed(s1_cpy, 1.);
     path_set_planar_speed(s2_cpy, 1.);
@@ -192,7 +192,7 @@ std::pair<double, double> temporal_XY_time_slack_lineCircle(const DynamicPathSha
 
 template <bool use_derivatives>
 std::pair<double, double> temporal_XY_time_slack_circles(const DynamicPathShape &s1, const DynamicPathShape &s2,
-                                                         const AircraftStats &s1_stats, const AircraftStats &s2_stats, double duration, double tdist, double tol)
+                                                         const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration, double tdist, double tol)
 {
     typedef OptimizationRounding::fast_rounding<double> Policies;
 
@@ -201,11 +201,11 @@ std::pair<double, double> temporal_XY_time_slack_circles(const DynamicPathShape 
     auto s1_cpy = s1;
     auto s2_cpy = s2;
 
-    // If speed is changing, use the linAccCircleCircle definition (and normalize speed in shapes)
-    double a1 = (s1_stats.target_airspeed - s1_stats.airspeed) / duration;
-    double v1 = s1_stats.airspeed;
-    double a2 = (s2_stats.target_airspeed - s2_stats.airspeed) / duration;
-    double v2 = s2_stats.airspeed;
+    // Gather parameters
+    double a1 = s1_prof.acceleration;
+    double v1 = s1_prof.base_speed;
+    double a2 = s2_prof.acceleration;
+    double v2 = s2_prof.base_speed;
 
     path_set_planar_speed(s1_cpy, 1.);
     path_set_planar_speed(s2_cpy, 1.);
@@ -251,25 +251,25 @@ std::pair<double, double> temporal_XY_time_slack_circles(const DynamicPathShape 
 
 template <bool use_derivatives>
 std::pair<double, double> temporal_XY_time_slack(const DynamicPathShape &s1, const DynamicPathShape &s2,
-                                                 const AircraftStats &s1_stats, const AircraftStats &s2_stats, double duration, double tdist, double tol)
+                                                 const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration, double tdist, double tol)
 {
     if (s1.m == STRAIGHT && s2.m == STRAIGHT)
     {
-        return temporal_XY_time_slack_straights(s1, s2, s1_stats, s2_stats, duration, tdist, tol);
+        return temporal_XY_time_slack_straights(s1, s2, s1_prof, s2_prof, duration, tdist, tol);
     }
     else if (s1.m != STRAIGHT && s2.m != STRAIGHT)
     {
-        return temporal_XY_time_slack_circles<use_derivatives>(s1, s2, s1_stats, s2_stats, duration, tdist, tol);
+        return temporal_XY_time_slack_circles<use_derivatives>(s1, s2, s1_prof, s2_prof, duration, tdist, tol);
     }
     else
     {
         if (s1.m == STRAIGHT)
         {
-            return temporal_XY_time_slack_lineCircle<use_derivatives>(s1, s2, s1_stats, s2_stats, duration, tdist, tol);
+            return temporal_XY_time_slack_lineCircle<use_derivatives>(s1, s2, s1_prof, s2_prof, duration, tdist, tol);
         }
         else
         {
-            return temporal_XY_time_slack_lineCircle<use_derivatives>(s2, s1, s2_stats, s1_stats, duration, tdist, tol);
+            return temporal_XY_time_slack_lineCircle<use_derivatives>(s2, s1, s2_prof, s1_prof, duration, tdist, tol);
         }
     }
 }

@@ -23,6 +23,7 @@
 #include "Dubins.hpp"
 #include "Primitives.hpp"
 #include "ProjectHeader.h"
+#include "SpeedProfile.hpp"
 
 
 #ifndef DubinsFleetPlanner_PRECISION
@@ -184,7 +185,7 @@ std::pair<double,double> temporal_3D_dist(const PathShape<m1> &s1, const PathSha
  */
 template<DubinsMove m1, DubinsMove m2, bool use_derivatives=DubinsFleetPlanner_SOLVE_WITH_DERIVATIVES>
 std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathShape<m2> &s2,
-    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol);
+    const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration, double tol);
 
 /**
  * @brief Given two base trajectories, find the minimal XY euclidean distance between them on the given time interval
@@ -203,7 +204,7 @@ std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathSha
  */
 template<bool use_derivatives=DubinsFleetPlanner_SOLVE_WITH_DERIVATIVES>
 std::pair<double,double> temporal_XY_dist(const DynamicPathShape &s1, const DynamicPathShape &s2,
-    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration, double tol);
+    const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration, double tol);
 
 
 /**

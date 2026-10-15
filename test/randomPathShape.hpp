@@ -129,7 +129,8 @@ inline Eigen::Vector2d angle_vector(double angle)
 
 template<DubinsMove m1, DubinsMove m2, size_t samples>
 std::pair<double,double> sample_temporal_XY_dist(const PathShape<m1>& s1, const PathShape<m2>& s2,
-    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration)
+    const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration)
+    
 {
     static_assert(samples > 1);
     Pose3D p1,p2;
@@ -154,8 +155,8 @@ std::pair<double,double> sample_temporal_XY_dist(const PathShape<m1>& s1, const 
     {
         t = i*duration/(samples-1);
 
-        double l1  = length_traveled(s1_stats,t,duration);
-        double l2  = length_traveled(s2_stats,t,duration);
+        double l1  = s1_prof.get_length_at_time(t);
+        double l2  = s2_prof.get_length_at_time(t);
         p1 = follow_dubins(s1_cs,l1);
         p2 = follow_dubins(s2_cs,l2);
 
@@ -175,7 +176,7 @@ std::pair<double,double> sample_temporal_XY_dist(const PathShape<m1>& s1, const 
 
 template<size_t samples>
 std::pair<double,double> sample_temporal_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2,
-    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration)
+    const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration)
 {
     static_assert(samples > 1);
     Pose3D p1,p2;
@@ -200,8 +201,8 @@ std::pair<double,double> sample_temporal_XY_dist(const DynamicPathShape& s1, con
     {
         t = i*duration/(samples-1);
 
-        double l1  = length_traveled(s1_stats,t,duration);
-        double l2  = length_traveled(s2_stats,t,duration);
+        double l1  = s1_prof.get_length_at_time(t);
+        double l2  = s2_prof.get_length_at_time(t);
         p1 = follow_dubins(s1_cs,l1);
         p2 = follow_dubins(s2_cs,l2);
 
@@ -221,7 +222,7 @@ std::pair<double,double> sample_temporal_XY_dist(const DynamicPathShape& s1, con
 
 template<size_t samples>
 std::pair<double,double> sample_temporal_XY_dist(const Dubins& s1, const Dubins& s2,
-    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration)
+    const SpeedProfile& s1_prof, const SpeedProfile& s2_prof, double duration)
 {
     static_assert(samples > 1);
     Pose3D p1,p2;
@@ -242,8 +243,8 @@ std::pair<double,double> sample_temporal_XY_dist(const Dubins& s1, const Dubins&
         timestamps.push_back(i*duration/(samples-1));
     }
 
-    auto s1_samples = s1.get_positions(timestamps,s1_stats,true);
-    auto s2_samples = s2.get_positions(timestamps,s2_stats,true);
+    auto s1_samples = s1.get_positions_at_times(timestamps,true);
+    auto s2_samples = s2.get_positions_at_times(timestamps,true);
 
     for(size_t i = 0; i < samples; i++)
     {

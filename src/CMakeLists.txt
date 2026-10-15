@@ -43,6 +43,7 @@ set(DubinsFleetPlannerLib_SRC
     PathGenerators/Sampling.cpp
     Primitives.cpp
     Pose3D.cpp
+    SpeedProfile.cpp
     utils.cpp
     VariableSpeedConflict.cpp)
 

@@ -155,7 +155,7 @@ void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<Ai
                     {
                         continue;
                     }
-                    const Dubins& p_followed = p.follow_for(delay, s);
+                    const Dubins& p_followed = p.follow_for_duration(delay, s);
                     res = generic_compute_distance<distance_function>(p_followed,c,s,cs,min_sep);
                 }
                 else

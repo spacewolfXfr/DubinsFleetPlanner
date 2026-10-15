@@ -123,7 +123,7 @@ std::vector<Dubins> find_pathplanning_LP_solution(
         {
             if (duration_based_costs)
             {
-                costs[ac*max_path_num+p_index]  = p->get_duration(stat) * max_section_count * 2 * M_PI + p->turning_angle();
+                costs[ac*max_path_num+p_index]  = p->get_duration() * max_section_count * 2 * M_PI + p->turning_angle();
             }
             else
             {

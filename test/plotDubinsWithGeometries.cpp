@@ -101,7 +101,7 @@ int main()
             Pose3D start_pos = d->get_position(start_l);
             Pose3D end_pos   = d->get_position(end_l);
 
-            DubinsMove curr_type = d->get_section_type((start_l+end_l)/2);
+            DubinsMove curr_type = d->get_section_type_at_length((start_l+end_l)/2);
             switch (curr_type)
             {
             case STRAIGHT:
