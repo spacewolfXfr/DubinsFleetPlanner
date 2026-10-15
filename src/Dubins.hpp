@@ -417,6 +417,77 @@ public:
         return first.XY_distance_to(second, first_stats, second_stats, duration, min_dist, tol, hotstart, rec);
     }
 
+    static std::pair<double, double> sampling_XY_distance(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
+                                                         double duration, double min_dist,
+                                                         double tol = DubinsFleetPlanner_PRECISION,
+                                                         [[maybe_unused]] std::optional<double> hotstart = std::nullopt,
+                                                         [[maybe_unused]] uint rec = DubinsDistDefaultRec)
+    {
+        double t = 0.;
+        double this_duration = first.get_duration(first_stats);
+        double other_duration = second.get_duration(second_stats);
+
+        double mTime = 0.;
+        double mDist = pose_dist_XY(first.get_start(),second.get_start());
+
+        while (t < duration)
+        {
+            Pose3D p1 = first.get_position(length_traveled(first_stats, t, this_duration));
+            Pose3D p2 = second.get_position(length_traveled(second_stats, t, other_duration));
+
+            double dist = pose_dist_XY(p1, p2);
+
+            if (dist < mDist)
+            {
+                mDist = dist;
+                mTime = t;
+            }
+
+            t += tol;
+        }
+
+        return {mTime, mDist};
+    }
+
+    static std::pair<double, double> sampling_XY_tdistance(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
+                                                         double duration, double min_tdist,
+                                                         double tol = DubinsFleetPlanner_PRECISION,
+                                                         [[maybe_unused]] std::optional<double> hotstart = std::nullopt,
+                                                         [[maybe_unused]] uint rec = DubinsDistDefaultRec)
+    {
+        double t = 0.;
+        double this_duration = first.get_duration(first_stats);
+        double other_duration = second.get_duration(second_stats);
+
+        double mTime = 0.;
+        double mVal = std::pow(pose_dist_XY(first.get_start(),second.get_start()), 2) - std::pow(min_tdist * std::max(first_stats.airspeed, second_stats.airspeed), 2);
+
+        while (t < duration)
+        {
+            Pose3D p1 = first.get_position(length_traveled(first_stats, t, this_duration));
+            Pose3D p2 = second.get_position(length_traveled(second_stats, t, other_duration));
+
+            double dx = p1.x - p2.x;
+            double dy = p1.y - p2.y;
+
+            double v1 = speed_at_time(first_stats, t, this_duration);
+            double v2 = speed_at_time(second_stats, t, other_duration);
+            double vMax = std::max(v1, v2);
+
+            double val = dx * dx + dy * dy - min_tdist * min_tdist * vMax * vMax;
+
+            if (val < mVal)
+            {
+                mVal = val;
+                mTime = t;
+            }
+
+            t += tol;
+        }
+
+        return {mTime, mVal};
+    }
+
     /**
      * @brief Generic type for distance function
      *
@@ -476,11 +547,11 @@ public:
      *
      * @param first         First path
      * @param second        Second path
-     * @param first_speed   First path speed
-     * @param second_speed  Second path speed
+     * @param first_stats   First path stats
+     * @param second_stats  Second path stats
      * @param duration      Duration over which to check for separation
      * @param min_dist      Minimal distance required, as a time unit (to be multiplied by the aircraft's speed)
-     * @param tol           Distance between two successive time samples
+     * @param tol           Delta t for the sampling. The smaller, the more precise but the slower.
      * @param rec           UNUSED, required for compatibility with other functions
      * @return true         The two trajectories are separated
      * @return false        There is a conflict
@@ -511,10 +582,68 @@ public:
         return true;
     }
 
+    /**
+     * @brief Check wether two Dubins paths are separated by a minimum time distance
+     * 
+     * @param first         First path
+     * @param second        Second path
+     * @param first_stats   First path stats
+     * @param second_stats  Second path stats
+     * @param duration      Duration over which to check for separation
+     * @param min_tdist     Minimal time distance required
+     * @param tol           Tolerance for the time distance
+     * @param rec           Recursive depth for the geometric approximation
+     * @return true         The two trajectories are separated
+     * @return false        There is a conflict
+     */
     static bool are_XY_tdist_separated(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
                                  double duration, double min_tdist,
                                  double tol = DubinsFleetPlanner_PRECISION,
                                  uint rec = DubinsDistDefaultRec);
+
+    /**
+     * @brief Check wether two Dubins paths are separated by using sampling
+     *
+     * @param first         First path
+     * @param second        Second path
+     * @param first_stats   First path stats
+     * @param second_stats  Second path stats
+     * @param duration      Duration over which to check for separation
+     * @param min_tdist     Minimal time distance required
+     * @param tol           Delta t for the sampling. The smaller, the more precise but the slower.
+     * @param rec           UNUSED, required for compatibility with other functions
+     * @return true         The two trajectories are separated
+     * @return false        There is a conflict
+     */
+    static bool are_XY_tdist_separated_sampling(const Dubins &first, const Dubins &second, const AircraftStats& first_stats, const AircraftStats& second_stats,
+                                          double duration, double min_tdist,
+                                          double tol, [[maybe_unused]] uint rec)
+    {
+        double t = 0.;
+        double this_duration = first.get_duration(first_stats);
+        double other_duration = second.get_duration(second_stats);
+        while (t < duration)
+        {
+            Pose3D p1 = first.get_position(length_traveled(first_stats, t, this_duration));
+            Pose3D p2 = second.get_position(length_traveled(second_stats, t, other_duration));
+
+            double dx = p1.x - p2.x;
+            double dy = p1.y - p2.y;
+
+            double v1 = speed_at_time(first_stats, t, this_duration);
+            double v2 = speed_at_time(second_stats, t, other_duration);
+            double vMax = std::max(v1, v2);
+
+            if (dx * dx + dy * dy < min_tdist * min_tdist * vMax * vMax)
+            {
+                return false;
+            }
+
+            t += tol;
+        }
+
+        return true;
+    }
 
     /**
      * @brief Generic type for separation function
