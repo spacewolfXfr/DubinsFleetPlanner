@@ -42,8 +42,8 @@ void Dubins::recompute()
         const DynamicPathShape &s = sections[i];
 
         // Vertical control is not handled, make sure everything stays at zero
-        // assert(abs(s.p3) < DubinsFleetPlanner_ZERO_TOLERANCE);
-        // assert(abs(p.z) < DubinsFleetPlanner_ZERO_TOLERANCE);
+        // assert(std::abs(s.p3) < DubinsFleetPlanner_ZERO_TOLERANCE);
+        // assert(std::abs(p.z) < DubinsFleetPlanner_ZERO_TOLERANCE);
 
         curr_len += s.length;
         junctions_locs.push_back(curr_len);
@@ -419,14 +419,14 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
 
 
         AircraftStats curr_stats    = this_stats;
-        AircraftStats other_stats   = other_stats;
+        AircraftStats curr_other_stats   = other_stats;
 
         curr_stats.airspeed  = speed_at_time(this_stats, timepoints[index], duration);
-        other_stats.airspeed = speed_at_time(other_stats, timepoints[index], duration);
+        curr_other_stats.airspeed = speed_at_time(other_stats, timepoints[index], duration);
 
         curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[index + 1], duration);
-        other_stats.target_airspeed = speed_at_time(other_stats, timepoints[index + 1], duration);                     
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats,sec_duration, min_dist, tol, rec);
+        curr_other_stats.target_airspeed = speed_at_time(other_stats, timepoints[index + 1], duration);                     
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats,sec_duration, min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {
@@ -481,15 +481,15 @@ std::pair<double, double> Dubins::XY_distance_to(const Dubins &other, const Airc
                                      1., other_ref_shape.p1, other_ref_shape.p3);
 
         AircraftStats curr_stats    = this_stats;
-        AircraftStats other_stats   = other_stats;
+        AircraftStats curr_other_stats   = other_stats;
 
         curr_stats.airspeed  = speed_at_time(this_stats, timepoints[i], duration);
-        other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
+        curr_other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
 
         curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[i + 1], duration);
-        other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
+        curr_other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
 
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {
@@ -537,15 +537,15 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
                                      1., other_ref_shape.p1, other_ref_shape.p3);
 
         AircraftStats curr_stats    = this_stats;
-        AircraftStats other_stats   = other_stats;
+        AircraftStats curr_other_stats   = other_stats;
 
         curr_stats.airspeed  = speed_at_time(this_stats, times.front(), duration);
-        other_stats.airspeed = speed_at_time(other_stats, times.front(), duration);
+        curr_other_stats.airspeed = speed_at_time(other_stats, times.front(), duration);
 
         curr_stats.target_airspeed  = speed_at_time(this_stats, times.back(), duration);
-        other_stats.target_airspeed = speed_at_time(other_stats, times.back(), duration);
+        curr_other_stats.target_airspeed = speed_at_time(other_stats, times.back(), duration);
 
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats, duration, min_dist, tol, rec);
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats, duration, min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {
@@ -596,15 +596,15 @@ bool Dubins::is_XY_separated_from(const Dubins &other, const AircraftStats& this
                                      1., other_ref_shape.p1, other_ref_shape.p3);
 
         AircraftStats curr_stats    = this_stats;
-        AircraftStats other_stats   = other_stats;
+        AircraftStats curr_other_stats   = other_stats;
 
         curr_stats.airspeed  = speed_at_time(this_stats, timepoints[i], duration);
-        other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
+        curr_other_stats.airspeed = speed_at_time(other_stats, timepoints[i], duration);
 
         curr_stats.target_airspeed  = speed_at_time(this_stats, timepoints[i + 1], duration);
-        other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
+        curr_other_stats.target_airspeed = speed_at_time(other_stats, timepoints[i + 1], duration);
 
-        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
+        std::pair<double, double> current_sep = compute_XY_separation(curr_shape, other_shape, curr_stats, curr_other_stats, (timepoints[i + 1] - timepoints[i]), min_dist, tol, rec);
 
         if (current_sep.second < min_dist)
         {

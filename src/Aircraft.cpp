@@ -39,9 +39,9 @@ double time_to_travel_length(const AircraftStats& stats, double length, double t
     double b = stats.airspeed;
     double c = -length;
 
-    if (abs(a) < DubinsFleetPlanner_ZERO_TOLERANCE)
+    if (std::abs(a) < DubinsFleetPlanner_ZERO_TOLERANCE)
     {
-        if (abs(b) < DubinsFleetPlanner_ZERO_TOLERANCE)
+        if (std::abs(b) < DubinsFleetPlanner_ZERO_TOLERANCE)
         {
             throw std::runtime_error("No valid solution for time_to_travel_length: zero speed and zero acceleration");
         }

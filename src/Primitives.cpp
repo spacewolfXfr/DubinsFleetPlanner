@@ -913,7 +913,7 @@ DynamicPathShape::DynamicPathShape(DubinsMove _m, const Pose3D& start, double dt
 
         double dz = start.z + dt*v_speed;
 
-        if (abs(dz) > v_speed)
+        if (std::abs(dz) > v_speed)
         {
             p3 = (dz > 0) ? v_speed : -v_speed;
         }
@@ -1047,7 +1047,7 @@ PathShape<LEFT> compute_params<LEFT>(const Pose3D& start, const Pose3D& end, dou
     double dtheta = mod_2pi(end.theta - start.theta);
     double length = dtheta*turn_radius;
 
-    if (abs(dz) > v_speed)
+    if (std::abs(dz) > v_speed)
     {
         output.p3 = (dz > 0) ? v_speed : -v_speed;
     }
@@ -1080,7 +1080,7 @@ PathShape<RIGHT> compute_params<RIGHT>(const Pose3D& start, const Pose3D& end, d
     double dtheta = mod_2pi(start.theta - end.theta);
     double length = dtheta*turn_radius;
 
-    if (abs(dz) > v_speed)
+    if (std::abs(dz) > v_speed)
     {
         output.p3 = (dz > 0) ? v_speed : -v_speed;
     }
@@ -1111,7 +1111,7 @@ PathShape<STRAIGHT> compute_params<STRAIGHT>(const Pose3D& start, const Pose3D& 
 
     double d_norm = std::sqrt(dx*dx + dy*dy);
 
-    if (abs(dz) > v_speed)
+    if (std::abs(dz) > v_speed)
     {
         output.p3 = (dz > 0) ? v_speed : -v_speed;
     }

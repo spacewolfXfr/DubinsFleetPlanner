@@ -1543,7 +1543,7 @@ std::pair<double,double> temporal_Z_dist(const PathShape<m1> &s1, const PathShap
         min_loc     = duration;
     }
 
-    if (abs(dv) > DubinsFleetPlanner_PRECISION)
+    if (std::abs(dv) > DubinsFleetPlanner_PRECISION)
     {
         double tmin = (v1*v2)/dv2;
         if ((0 <= tmin) && (tmin <= duration))

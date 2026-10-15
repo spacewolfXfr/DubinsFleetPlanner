@@ -250,7 +250,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
             
         }
@@ -266,7 +266,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
         }
 
@@ -281,7 +281,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
         }
 
@@ -296,7 +296,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
         }
 
@@ -311,7 +311,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
         }
 
@@ -326,7 +326,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
         }
 
@@ -341,7 +341,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
         }
 
@@ -356,7 +356,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                 output.push_back(
                     std::make_unique<Dubins>(start,end,shapes)
                 );
-                if (abs(output.back()->get_length() - target_len) > 1e-1)
+                if (std::abs(output.back()->get_length() - target_len) > 1e-1)
                 {
                     shapes = generate_line_extended_pathshapes<set_radius_SRS>(
                 start,end,r*SRS_length,(1-r)*SRS_length,turn_radius,precision_tol);
@@ -364,7 +364,7 @@ std::vector<std::unique_ptr<Dubins>> FittedStraightBaseDubins::generate_paths(
                         std::make_unique<Dubins>(start,end,shapes)
                     );
                 }
-                assert(abs(output.back()->get_length() - target_len) < 1e-1);
+                assert(std::abs(output.back()->get_length() - target_len) < 1e-1);
             }
         } 
 

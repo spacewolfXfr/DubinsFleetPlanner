@@ -113,8 +113,8 @@ public:
         assert(pose_dist(_sections.front().initial_pose(), _start) < DubinsFleetPlanner_PRECISION);
         assert(pose_dist(_sections.back().final_pose(), _end) < DubinsFleetPlanner_PRECISION);
 
-        assert(abs(pose_aligned(_sections.front().initial_pose(), _start)) < DubinsFleetPlanner_PRECISION);
-        assert(abs(pose_aligned(_sections.back().final_pose(), _end)) < DubinsFleetPlanner_PRECISION);
+        assert(std::abs(pose_aligned(_sections.front().initial_pose(), _start)) < DubinsFleetPlanner_PRECISION);
+        assert(std::abs(pose_aligned(_sections.back().final_pose(), _end)) < DubinsFleetPlanner_PRECISION);
 #endif
     }
 
