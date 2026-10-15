@@ -113,13 +113,13 @@ TEST(TemporalDistance,Random2DCasesNoDerivatives)
         AircraftStats l_stats   {4*i+2, path_planar_speed(l)   , path_planar_speed(l)   , 1., 0., 0., 0.};
         AircraftStats r_stats   {4*i+3, path_planar_speed(r)   , path_planar_speed(r)   , 1., 0., 0., 0.};
 
-        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<STRAIGHT,STRAIGHT,samples>  (s,sbis,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<STRAIGHT,STRAIGHT,samples>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SS done" << std::endl;
-        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<STRAIGHT,LEFT,samples>  (s,l,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<STRAIGHT,LEFT,samples>  (s,l,s_stats,l_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SL done" << std::endl;
-        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<STRAIGHT,RIGHT,samples> (s,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<STRAIGHT,RIGHT,samples> (s,r,s_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SR done" << std::endl;
-        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,l_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
         std::pair<double,double> test_ss_no_der = temporal_XY_dist<STRAIGHT,STRAIGHT,false>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION,TEST_PRECISION);
@@ -156,13 +156,13 @@ TEST(TemporalDistance,Random2DCasesWithDerivatives)
         AircraftStats l_stats   {4*i+2, path_planar_speed(l)   , path_planar_speed(l)   , 1., 0., 0., 0.};
         AircraftStats r_stats   {4*i+3, path_planar_speed(r)   , path_planar_speed(r)   , 1., 0., 0., 0.};
 
-        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<STRAIGHT,STRAIGHT,samples>  (s,sbis,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<STRAIGHT,STRAIGHT,samples>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SS done" << std::endl;
-        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<STRAIGHT,LEFT,samples>  (s,l,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<STRAIGHT,LEFT,samples>  (s,l,s_stats,l_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SL done" << std::endl;
-        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<STRAIGHT,RIGHT,samples> (s,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<STRAIGHT,RIGHT,samples> (s,r,s_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SR done" << std::endl;
-        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,l_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
         std::pair<double,double> test_ss_with_der = temporal_XY_dist<STRAIGHT,STRAIGHT,true>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION,TEST_PRECISION);
@@ -199,13 +199,13 @@ TEST(TemporalDistance,Random2DDynamicCasesNoDerivatives)
         AircraftStats l_stats   {4*i+2, path_planar_speed(l)   , path_planar_speed(l)   , 1., 0., 0., 0.};
         AircraftStats r_stats   {4*i+3, path_planar_speed(r)   , path_planar_speed(r)   , 1., 0., 0., 0.};
 
-        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<samples>  (s,sbis,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<samples>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SS done" << std::endl;
-        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<samples>  (s,l,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<samples>  (s,l,s_stats,l_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SL done" << std::endl;
-        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<samples>  (s,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<samples>  (s,r,s_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SR done" << std::endl;
-        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<samples>  (l,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<samples>  (l,r,l_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
         std::pair<double,double> test_ss_no_der = temporal_XY_dist<false>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION,TEST_PRECISION);
@@ -242,13 +242,13 @@ TEST(TemporalDistance,Random2DDynamicCasesWithDerivatives)
         AircraftStats l_stats   {4*i+2, path_planar_speed(l)   , path_planar_speed(l)   , 1., 0., 0., 0.};
         AircraftStats r_stats   {4*i+3, path_planar_speed(r)   , path_planar_speed(r)   , 1., 0., 0., 0.};
 
-        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<samples>  (s,sbis,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_ss = sample_temporal_XY_dist<samples>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SS done" << std::endl;
-        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<samples>  (s,l,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sl = sample_temporal_XY_dist<samples>  (s,l,s_stats,l_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SL done" << std::endl;
-        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<samples>  (s,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_sr = sample_temporal_XY_dist<samples>  (s,r,s_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling SR done" << std::endl;
-        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<samples>  (l,r,TEST_PATH_DURATION);
+        std::pair<double,double> sampled_lr = sample_temporal_XY_dist<samples>  (l,r,l_stats,r_stats,TEST_PATH_DURATION);
         std::cout << "Sampling LR done" << std::endl;
 
         std::pair<double,double> test_ss_with_der = temporal_XY_dist<true>  (s,sbis,s_stats,sbis_stats,TEST_PATH_DURATION,TEST_PRECISION);

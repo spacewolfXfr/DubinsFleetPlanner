@@ -21,6 +21,7 @@
 #include <random>
 
 #include <Eigen/Dense>
+#include "Aircraft.h"
 #include "Primitives.hpp"
 
 template<DubinsMove m>
@@ -106,41 +107,22 @@ inline Eigen::Vector2d angle_vector(double angle)
     return Eigen::Vector2d(std::cos(angle),std::sin(angle));
 }
 
-template <DubinsMove m>
-inline auto samples_generator(const PathShape<m>& s);
-
-template <>
-[[gnu::pure]]
-inline auto samples_generator(const PathShape<STRAIGHT>& s)
-{
-    Eigen::Vector2d p0(s.x,s.y);
-    Eigen::Vector2d v(s.p1,s.p2);
-    auto f_bind = [=](double t) {return p0 + t*v;};
-    return f_bind;
-}
-
-template <DubinsMove m>
-[[gnu::pure]]
-inline auto samples_generator(const PathShape<m>& s)
-{
-    Eigen::Vector2d p0(s.x,s.y);
-
-    double r        = s.p1;
-    double omega    = s.p2;
-    double phi0     = s.p4;
-    auto f_bind = [=](double t) {return p0 + r*angle_vector(t*omega+phi0);};
-    return f_bind;
-}
-
 template<DubinsMove m1, DubinsMove m2, size_t samples>
-std::pair<double,double> sample_temporal_XY_dist(const PathShape<m1>& s1, const PathShape<m2>& s2, double duration)
+std::pair<double,double> sample_temporal_XY_dist(const PathShape<m1>& s1, const PathShape<m2>& s2,
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration)
 {
     static_assert(samples > 1);
     Pose3D p1,p2;
 
+    PathShape<m1> s1_cs = s1;
+    PathShape<m2> s2_cs = s2;
+
+    path_set_planar_speed(s1_cs,1.);
+    path_set_planar_speed(s2_cs,1.);
+
     double t = 0.;
-    p1 = follow_dubins(s1,t);
-    p2 = follow_dubins(s2,t);
+    p1 = follow_dubins(s1_cs,t);
+    p2 = follow_dubins(s2_cs,t);
 
     double dx = p1.x - p2.x;
     double dy = p1.y - p2.y;
@@ -152,8 +134,10 @@ std::pair<double,double> sample_temporal_XY_dist(const PathShape<m1>& s1, const 
     {
         t = i*duration/(samples-1);
 
-        p1 = follow_dubins(s1,t);
-        p2 = follow_dubins(s2,t);
+        double l1  = length_traveled(s1_stats,t,duration);
+        double l2  = length_traveled(s2_stats,t,duration);
+        p1 = follow_dubins(s1_cs,l1);
+        p2 = follow_dubins(s2_cs,l2);
 
         dx = p1.x - p2.x;
         dy = p1.y - p2.y;
@@ -170,14 +154,21 @@ std::pair<double,double> sample_temporal_XY_dist(const PathShape<m1>& s1, const 
 }
 
 template<size_t samples>
-std::pair<double,double> sample_temporal_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2, double duration)
+std::pair<double,double> sample_temporal_XY_dist(const DynamicPathShape& s1, const DynamicPathShape& s2,
+    const AircraftStats& s1_stats, const AircraftStats& s2_stats, double duration)
 {
     static_assert(samples > 1);
     Pose3D p1,p2;
 
+    DynamicPathShape s1_cs = s1;
+    DynamicPathShape s2_cs = s2;
+
+    path_set_planar_speed(s1_cs,1.);
+    path_set_planar_speed(s2_cs,1.);
+
     double t = 0.;
-    p1 = follow_dubins(s1,t);
-    p2 = follow_dubins(s2,t);
+    p1 = follow_dubins(s1_cs,t);
+    p2 = follow_dubins(s2_cs,t);
 
     double dx = p1.x - p2.x;
     double dy = p1.y - p2.y;
@@ -189,8 +180,10 @@ std::pair<double,double> sample_temporal_XY_dist(const DynamicPathShape& s1, con
     {
         t = i*duration/(samples-1);
 
-        p1 = follow_dubins(s1,t);
-        p2 = follow_dubins(s2,t);
+        double l1  = length_traveled(s1_stats,t,duration);
+        double l2  = length_traveled(s2_stats,t,duration);
+        p1 = follow_dubins(s1_cs,l1);
+        p2 = follow_dubins(s2_cs,l2);
 
         dx = p1.x - p2.x;
         dy = p1.y - p2.y;

@@ -53,10 +53,7 @@ void check_all_dubins_pairs(
     uint rec,
     std::string expect_msg = "",
     bool no_test=false)
-{
-    double p1_speed = p1_stats.airspeed;
-    double p2_speed = p2_stats.airspeed;
-    
+{    
     for(size_t i1 = 0; i1 < ds1.size(); i1++)
     {
         auto& d1 = ds1[i1];
@@ -64,7 +61,7 @@ void check_all_dubins_pairs(
         {
             auto& d2 = ds2[i2];
             std::string msg = expect_msg + " using 1: " + d1->get_type_abbr() + " and 2: " + d2->get_type_abbr();
-            double duration = std::min(d1->get_duration(p1_stats)/p1_speed,d2->get_duration(p2_stats)/p2_speed);
+            double duration = std::min(d1->get_duration(p1_stats),d2->get_duration(p2_stats));
             sample_test_dubins_separation<TEST_SAMPLES_COUNT>(*d1,*d2,p1_stats,p2_stats,duration,min_sep,tol,rec,msg,no_test);
         }
     }
