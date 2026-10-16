@@ -489,6 +489,14 @@ void parse_json_ModernTrajectory(const json& j,
     from_json(j_path.at("end"),end);
 
     double total_length = j_path.at("total_length");
+
+    SpeedProfile speed_profile(stats.airspeed, 0.);
+    if (j_path.contains("speed_profile"))
+    {
+        const json& j_speed_profile = j_path.at("speed_profile");
+        speed_profile.base_speed = j_speed_profile.at("base_speed");
+        speed_profile.acceleration = j_speed_profile.at("acceleration");
+    }
     
     std::vector<DynamicPathShape> basic_paths;
     for(const json &j_bpath : j_path.at("sections"))
@@ -499,6 +507,7 @@ void parse_json_ModernTrajectory(const json& j,
     }
 
     path = Dubins(start,end,basic_paths);
+    path.speed_profile = speed_profile;
     assert(pose_dist(path.get_start(),start) < DubinsFleetPlanner_PRECISION);
     assert(pose_dist(path.get_end(),end) < DubinsFleetPlanner_PRECISION);
 }
@@ -625,6 +634,10 @@ void to_json_ModernTrajectory(json& j,
     json j_path;
     
     j_path["total_length"] = path.get_length();
+    j_path["speed_profile"] = {
+        {"base_speed", path.speed_profile.base_speed},
+        {"acceleration", path.speed_profile.acceleration}
+    };
 
     json j_start,j_end;
     to_json(j_start,path.get_start());
