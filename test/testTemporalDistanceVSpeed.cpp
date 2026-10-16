@@ -15,9 +15,17 @@
 // You should have received a copy of the GNU General Public License
 // along with DubinsFleetPlanner. If not, see <https://www.gnu.org/licenses/>.
 
+#include "testTemporalDistanceVSpeed.hpp"
+
 #include <gtest/gtest.h>
 
-#include "testTemporalDistanceVSpeed.hpp"
+#include <Eigen/Dense>
+#include <random>
+#include <tuple>
+
+#include "ConflictDetection.hpp"
+#include "randomPathShape.hpp"
+#include "SpeedProfile.hpp"
 
 namespace
 {
@@ -36,24 +44,18 @@ AircraftStats random_stats(int seed)
     return stats;
 }
 
-template<DubinsMove m>
-Pose3D position_at_time(const PathShape<m>& shape, const AircraftStats& stats,
-                       double time, double duration)
-{
-    PathShape<m> unit_speed_shape = shape;
-    path_set_planar_speed(unit_speed_shape, 1.);
-    return follow_dubins(unit_speed_shape, length_traveled(stats, time, duration));
-}
-
 template<bool use_derivatives, DubinsMove m1, DubinsMove m2>
 void check_solver_pair(const PathShape<m1>& first, const PathShape<m2>& second,
-                      const AircraftStats& first_stats, const AircraftStats& second_stats,
+                      const SpeedProfile& first_prof, const SpeedProfile& second_prof,
                       const char* label)
 {
     const auto result = temporal_XY_dist<m1, m2, use_derivatives>(
-        first, second, first_stats, second_stats, TEST_PATH_DURATION, TEST_PRECISION);
-    const Pose3D first_position = position_at_time(first, first_stats, result.first, TEST_PATH_DURATION);
-    const Pose3D second_position = position_at_time(second, second_stats, result.first, TEST_PATH_DURATION);
+        first, second, first_prof, second_prof, TEST_PATH_DURATION, TEST_PRECISION);
+    
+    double l1 = first_prof.get_length_at_time(result.first);
+    double l2 = second_prof.get_length_at_time(result.first);
+    const Pose3D first_position = follow_dubins<m1>(first, l1);
+    const Pose3D second_position = follow_dubins<m2>(second, l2);
 
     EXPECT_NEAR(pose_dist_XY(first_position, second_position), result.second,
                 DubinsFleetPlanner_PRECISION)
@@ -62,13 +64,13 @@ void check_solver_pair(const PathShape<m1>& first, const PathShape<m2>& second,
 
 template<bool use_derivatives, DubinsMove m1, DubinsMove m2>
 void check_sampled_pair(const PathShape<m1>& first, const PathShape<m2>& second,
-                        const AircraftStats& first_stats, const AircraftStats& second_stats,
+                        const SpeedProfile& first_prof, const SpeedProfile& second_prof,
                         const char* label)
 {
     const auto sampled = sample_temporal_XY_dist<m1, m2, sample_count>(
-        first, second, first_stats, second_stats, TEST_PATH_DURATION);
+        first, second, first_prof, second_prof, TEST_PATH_DURATION);
     const auto solved = temporal_XY_dist<m1, m2, use_derivatives>(
-        first, second, first_stats, second_stats, TEST_PATH_DURATION, TEST_PRECISION);
+        first, second, first_prof, second_prof, TEST_PATH_DURATION, TEST_PRECISION);
 
     EXPECT_NEAR(sampled.first, solved.first, DubinsFleetPlanner_PRECISION)
         << label << " location error (sampled vs solver)";
@@ -78,13 +80,13 @@ void check_sampled_pair(const PathShape<m1>& first, const PathShape<m2>& second,
 
 template<bool use_derivatives>
 void check_sampled_pair(const DynamicPathShape& first, const DynamicPathShape& second,
-                        const AircraftStats& first_stats, const AircraftStats& second_stats,
+                        const SpeedProfile& first_prof, const SpeedProfile& second_prof,
                         const char* label)
 {
     const auto sampled = sample_temporal_XY_dist<sample_count>(
-        first, second, first_stats, second_stats, TEST_PATH_DURATION);
+        first, second, first_prof, second_prof, TEST_PATH_DURATION);
     const auto solved = temporal_XY_dist<use_derivatives>(
-        first, second, first_stats, second_stats, TEST_PATH_DURATION, TEST_PRECISION);
+        first, second, first_prof, second_prof, TEST_PATH_DURATION, TEST_PRECISION);
 
     EXPECT_NEAR(sampled.first, solved.first, DubinsFleetPlanner_PRECISION)
         << label << " location error (sampled vs solver)";
@@ -97,20 +99,25 @@ void run_static_solver_tests()
 {
     for (int i = 0; i < TEST_NUM; ++i)
     {
-        const PathShape<STRAIGHT> first_straight = generate_random_shape<STRAIGHT>(4 * i, TEST_POS_RANGE, TEST_SPEED_RANGE);
-        const PathShape<STRAIGHT> second_straight = generate_random_shape<STRAIGHT>(4 * i + 1, TEST_POS_RANGE, TEST_SPEED_RANGE);
-        const PathShape<LEFT> left = generate_random_shape<LEFT>(4 * i + 2, TEST_POS_RANGE, TEST_SPEED_RANGE);
-        const PathShape<RIGHT> right = generate_random_shape<RIGHT>(4 * i + 3, TEST_POS_RANGE, TEST_SPEED_RANGE);
+        const PathShape<STRAIGHT>   first_straight  = generate_random_shape<STRAIGHT>(4 * i, TEST_POS_RANGE, TEST_SPEED_RANGE);
+        const PathShape<STRAIGHT>   second_straight = generate_random_shape<STRAIGHT>(4 * i + 1, TEST_POS_RANGE, TEST_SPEED_RANGE);
+        const PathShape<LEFT>       left            = generate_random_shape<LEFT>(4 * i + 2, TEST_POS_RANGE, TEST_SPEED_RANGE);
+        const PathShape<RIGHT>      right           = generate_random_shape<RIGHT>(4 * i + 3, TEST_POS_RANGE, TEST_SPEED_RANGE);
 
         const AircraftStats first_stats = random_stats(4 * i);
         const AircraftStats second_stats = random_stats(4 * i + 1);
         const AircraftStats left_stats = random_stats(4 * i + 2);
         const AircraftStats right_stats = random_stats(4 * i + 3);
 
-        check_solver_pair<use_derivatives>(first_straight, second_straight, first_stats, second_stats, "STRAIGHT-STRAIGHT");
-        check_solver_pair<use_derivatives>(first_straight, left, first_stats, left_stats, "STRAIGHT-LEFT");
-        check_solver_pair<use_derivatives>(first_straight, right, first_stats, right_stats, "STRAIGHT-RIGHT");
-        check_solver_pair<use_derivatives>(left, right, left_stats, right_stats, "LEFT-RIGHT");
+        const SpeedProfile first_prof(first_stats.airspeed, first_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile second_prof(second_stats.airspeed, second_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile left_prof(left_stats.airspeed, left_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile right_prof(right_stats.airspeed, right_stats.target_airspeed, TEST_PATH_DURATION);
+
+        check_solver_pair<use_derivatives>(first_straight, second_straight, first_prof, second_prof, "STRAIGHT-STRAIGHT");
+        check_solver_pair<use_derivatives>(first_straight, left, first_prof, left_prof, "STRAIGHT-LEFT");
+        check_solver_pair<use_derivatives>(first_straight, right, first_prof, right_prof, "STRAIGHT-RIGHT");
+        check_solver_pair<use_derivatives>(left, right, left_prof, right_prof, "LEFT-RIGHT");
     }
 }
 
@@ -129,10 +136,15 @@ void run_static_sample_tests()
         const AircraftStats left_stats = random_stats(4 * i + 2);
         const AircraftStats right_stats = random_stats(4 * i + 3);
 
-        check_sampled_pair<use_derivatives>(first_straight, second_straight, first_stats, second_stats, "STRAIGHT-STRAIGHT");
-        check_sampled_pair<use_derivatives>(first_straight, left, first_stats, left_stats, "STRAIGHT-LEFT");
-        check_sampled_pair<use_derivatives>(first_straight, right, first_stats, right_stats, "STRAIGHT-RIGHT");
-        check_sampled_pair<use_derivatives>(left, right, left_stats, right_stats, "LEFT-RIGHT");
+        const SpeedProfile first_prof(first_stats.airspeed, first_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile second_prof(second_stats.airspeed, second_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile left_prof(left_stats.airspeed, left_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile right_prof(right_stats.airspeed, right_stats.target_airspeed, TEST_PATH_DURATION);
+
+        check_sampled_pair<use_derivatives>(first_straight, second_straight, first_prof, second_prof, "STRAIGHT-STRAIGHT");
+        check_sampled_pair<use_derivatives>(first_straight, left, first_prof, left_prof, "STRAIGHT-LEFT");
+        check_sampled_pair<use_derivatives>(first_straight, right, first_prof, right_prof, "STRAIGHT-RIGHT");
+        check_sampled_pair<use_derivatives>(left, right, left_prof, right_prof, "LEFT-RIGHT");
     }
 }
 
@@ -150,11 +162,15 @@ void run_dynamic_sample_tests()
         const AircraftStats second_stats = random_stats(4 * i + 1);
         const AircraftStats left_stats = random_stats(4 * i + 2);
         const AircraftStats right_stats = random_stats(4 * i + 3);
+        const SpeedProfile first_prof(first_stats.airspeed, first_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile second_prof(second_stats.airspeed, second_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile left_prof(left_stats.airspeed, left_stats.target_airspeed, TEST_PATH_DURATION);
+        const SpeedProfile right_prof(right_stats.airspeed, right_stats.target_airspeed, TEST_PATH_DURATION);
 
-        check_sampled_pair<use_derivatives>(first_straight, second_straight, first_stats, second_stats, "STRAIGHT-STRAIGHT");
-        check_sampled_pair<use_derivatives>(first_straight, left, first_stats, left_stats, "STRAIGHT-LEFT");
-        check_sampled_pair<use_derivatives>(first_straight, right, first_stats, right_stats, "STRAIGHT-RIGHT");
-        check_sampled_pair<use_derivatives>(left, right, left_stats, right_stats, "LEFT-RIGHT");
+        check_sampled_pair<use_derivatives>(first_straight, second_straight, first_prof, second_prof, "STRAIGHT-STRAIGHT");
+        check_sampled_pair<use_derivatives>(first_straight, left, first_prof, left_prof, "STRAIGHT-LEFT");
+        check_sampled_pair<use_derivatives>(first_straight, right, first_prof, right_prof, "STRAIGHT-RIGHT");
+        check_sampled_pair<use_derivatives>(left, right, left_prof, right_prof, "LEFT-RIGHT");
     }
 }
 } // namespace

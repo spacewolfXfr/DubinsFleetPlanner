@@ -995,11 +995,22 @@ Pose3D DynamicPathShape::follow(double dt) const
     }
 }
 
+Pose3D DynamicPathShape::follow_for_length(double length) const
+{
+    double speed = planar_speed();
+    double duration = length/speed;
+    return follow(duration);
+}
+
 Pose3D follow_dubins(const DynamicPathShape& s, double duration)
 {
     return s.follow(duration);
 }
 
+Pose3D follow_for_length(const DynamicPathShape& s, double length)
+{
+    return s.follow_for_length(length);
+}
 
 void DynamicPathShape::shift_start(double dt, bool reduce_length)
 {

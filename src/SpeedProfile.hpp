@@ -12,7 +12,7 @@ public:
     double base_speed; // Base speed (at t=0)
     double acceleration; // Acceleration (constant)
 
-    SpeedProfile(double _base_speed, double _acceleration) : base_speed(base_speed), acceleration(acceleration) {}
+    SpeedProfile(double _base_speed, double _acceleration) : base_speed(_base_speed), acceleration(_acceleration) {}
     SpeedProfile() : base_speed(1.), acceleration(0.) {}
     SpeedProfile(double start_speed, double end_speed, double duration) : base_speed(start_speed), acceleration((end_speed - start_speed) / duration) {}
 

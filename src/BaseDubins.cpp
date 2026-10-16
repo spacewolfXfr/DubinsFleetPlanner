@@ -998,7 +998,7 @@ std::vector<std::unique_ptr<Dubins>> fit_possible_baseDubins(const AircraftStats
     {
         if (pathshapes.size() > 0)
         {
-            output.push_back(std::make_unique<Dubins>(_start, _end, pathshapes));
+            output.push_back(std::make_unique<Dubins>(_start, _end, pathshapes, stats));
         }
     };
 

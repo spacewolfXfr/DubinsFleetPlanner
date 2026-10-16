@@ -294,6 +294,15 @@ public:
     Pose3D follow(double duration) const;
 
     /**
+     * @brief Return the achieved pose after following the shape for the given length (in ground distance)
+     * 
+     * @param length Length to follow (in ground distance)
+     * @return Pose3D 
+     */
+    Pose3D follow_for_length(double length) const;
+    
+
+    /**
      * @brief Return the initial pose associated to this shape
      * 
      * @return Pose3D 
@@ -562,6 +571,15 @@ template<DubinsMove m>
 [[gnu::pure]]
 Pose3D follow_dubins(const PathShape<m>& s, double duration);
 
+template<DubinsMove m>
+[[gnu::pure]]
+Pose3D follow_for_length(const PathShape<m>& s, double length)
+{
+    double speed = path_planar_speed(s);
+    double duration = length/speed;
+    return follow_dubins<m>(s,duration);
+}
+
 /**
  * @brief Follow a Dubins move for a given duration. Equivalent to DynamicPathShape::follow
  * 
@@ -570,6 +588,16 @@ Pose3D follow_dubins(const PathShape<m>& s, double duration);
  * @return Pose3d   Resulting pose
  */
 Pose3D follow_dubins(const DynamicPathShape& s, double duration);
+
+/**
+ * @brief Follow a Dubins move for a planar length. Equivalent to DynamicPathShape::follow_for_length
+ * 
+ * @param s         Class describing the shape to follow (including speed and starting point)
+ * @param length    Length to travel (in ground distance)
+ * @return Pose3d   Resulting pose
+ */
+Pose3D follow_for_length(const DynamicPathShape& s, double length);
+
 
 /**
  * @brief Compute the initial pose for a PathShape

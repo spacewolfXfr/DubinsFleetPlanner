@@ -98,8 +98,8 @@ int main()
 
             double end_l = junctions[i];
 
-            Pose3D start_pos = d->get_position(start_l);
-            Pose3D end_pos   = d->get_position(end_l);
+            Pose3D start_pos = d->get_position_at_length(start_l);
+            Pose3D end_pos   = d->get_position_at_length(end_l);
 
             DubinsMove curr_type = d->get_section_type_at_length((start_l+end_l)/2);
             switch (curr_type)

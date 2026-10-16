@@ -255,7 +255,7 @@ std::vector<Conflict_T> generic_compute_separations(const ListOfPossibilities& l
                     const Dubins& d1 = *d1_paths[p1];
                     const Dubins& d2 = *d2_paths[p2];
 
-                    if (!generic_check_compatibility<separation_function>(d1,d2,d1_stats,d2_stats,sep))
+                    if (!generic_check_compatibility<separation_function>(d1,d2,sep))
                     {
                         output.push_back({
                             i,p1,j,p2
@@ -303,7 +303,7 @@ std::vector<Conflict_T> generic_compute_separations(const SharedListOfPossibilit
                     const Dubins& d1 = *d1_paths[p1];
                     const Dubins& d2 = *d2_paths[p2];
 
-                    if (!generic_check_compatibility<separation_function>(d1,d2,d1_stats,d2_stats,sep))
+                    if (!generic_check_compatibility<separation_function>(d1,d2,sep))
                     {
                         output.push_back({
                             i,p1,j,p2
@@ -365,7 +365,7 @@ std::vector<RichConflict_T> generic_compute_distances(
                         hotstart = search->second.first;
                     }
 
-                    std::pair<double,double> cvals = generic_compute_distance<distance_function>(d1,d2,d1_stats,d2_stats,sep,hotstart);
+                    std::pair<double,double> cvals = generic_compute_distance<distance_function>(d1,d2,sep,hotstart);
                     if (all_values)
                     {
                         output.push_back({
@@ -434,7 +434,7 @@ std::vector<RichConflict_T> generic_compute_distances(
                         hotstart = search->second.first;
                     }
 
-                    std::pair<double,double> cvals = generic_compute_distance<distance_function>(d1,d2,d1_stats,d2_stats,sep,hotstart);
+                    std::pair<double,double> cvals = generic_compute_distance<distance_function>(d1,d2,sep,hotstart);
                     if (all_values)
                     {
                         output.push_back({
@@ -497,7 +497,7 @@ std::vector<Conflict_T> _subtask_compute_separations(
                     const Dubins& d1 = *d1_paths[p1];
                     const Dubins& d2 = *d2_paths[p2];
 
-                    if (!generic_check_compatibility<separation_function>(d1,d2,d1_stats,d2_stats,sep))
+                    if (!generic_check_compatibility<separation_function>(d1,d2,sep))
                     {
                         output.push_back({
                             i,p1,j,p2
@@ -639,7 +639,7 @@ std::vector<RichConflict_T> _subtask_compute_distances(
                         hotstart = search->second.first;
                     }
 
-                    std::pair<double,double> cvals = generic_compute_distance<distance_function>(d1,d2,d1_stats,d2_stats,sep,hotstart);
+                    std::pair<double,double> cvals = generic_compute_distance<distance_function>(d1,d2,sep,hotstart);
 
                     if (all_values)
                     {

@@ -121,6 +121,28 @@ public:
 #endif
     }
 
+    /**
+     * @brief Construct a new Dubins object, using the aircraft stats to compute the speed profile
+     * 
+     * @param _start Start pose
+     * @param _end   End pose
+     * @param _sections List of sections composing the path
+     * @param stats  Aircraft stats, used to determine the speed profile along the path
+     */
+    Dubins(const Pose3D &_start, const Pose3D &_end, std::vector<DynamicPathShape> _sections, const AircraftStats& stats)
+        : start(_start), end(_end), sections(_sections), speed_profile(1.,0.)
+    {
+        recompute();
+#if defined(DubinsFleetPlanner_ASSERTIONS) && DubinsFleetPlanner_ASSERTIONS > 0
+        assert(pose_dist(_sections.front().initial_pose(), _start) < DubinsFleetPlanner_PRECISION);
+        assert(pose_dist(_sections.back().final_pose(), _end) < DubinsFleetPlanner_PRECISION);
+
+        assert(std::abs(pose_aligned(_sections.front().initial_pose(), _start)) < DubinsFleetPlanner_PRECISION);
+        assert(std::abs(pose_aligned(_sections.back().final_pose(), _end)) < DubinsFleetPlanner_PRECISION);
+#endif
+        speed_profile = SpeedProfile::from_length(stats.airspeed, stats.target_airspeed, length);
+    }
+
     /************************ Getters ************************/
 
     Pose3D get_start() const { return start; }
@@ -452,7 +474,7 @@ public:
         double mTime = 0.;
         double mDist = pose_dist_XY(first_poses.front(),second_poses.front());
 
-        for(int i = 1; i < times.size(); i++)
+        for(uint i = 1; i < times.size(); i++)
         {
             double dist = pose_dist_XY(first_poses[i], second_poses[i]);
             if (dist < mDist)
@@ -496,7 +518,7 @@ public:
         double mTime = 0.;
         double mVal = std::pow(pose_dist_XY(first_poses.front(),second_poses.front()), 2) - std::pow(min_tdist * std::max(first.get_speed(), second.get_speed()), 2);
 
-        for(int i = 1; i < times.size(); i++)
+        for(uint i = 1; i < times.size(); i++)
         {
             double dx = first_poses[i].x - second_poses[i].x;
             double dy = first_poses[i].y - second_poses[i].y;

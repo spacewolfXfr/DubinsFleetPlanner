@@ -22,18 +22,15 @@ using json = nlohmann::json;
 
 // ---------------------------------------- Misc function ---------------------------------------- //
 
-static double compute_plan_duration(
-    const std::vector<Dubins>& paths,
-    const std::vector<AircraftStats>& stats)
+static double compute_plan_duration(const std::vector<Dubins>& paths)
 {
-    assert(paths.size() == stats.size());
     uint N = paths.size();
 
     double max_time = 0;
 
     for(uint i = 0; i < N; i++)
     {
-        double time = paths[i].get_duration(stats[i]);
+        double time = paths[i].get_duration();
         max_time = std::max(time,max_time);
     }
 
@@ -670,7 +667,7 @@ void DubinsPP::OutputPrinter::print_paths_as_ModernJSON(std::ostream& s,
 
     assert(paths.size() == stats.size());
 
-    double duration = compute_plan_duration(paths,stats);
+    double duration = compute_plan_duration(paths);
     uint N = paths.size();
 
     json j;
@@ -727,7 +724,7 @@ void DubinsPP::OutputPrinter::print_paths_as_CSV(std::ostream& s,
     assert(paths.size() == stats.size());
     assert(samples > 1);
 
-    double duration = compute_plan_duration(paths,stats);
+    double duration = compute_plan_duration(paths);
 
     uint N = paths.size();
 
@@ -754,7 +751,7 @@ void DubinsPP::OutputPrinter::print_paths_as_CSV(std::ostream& s,
     
     for(uint i = 0; i < N; i++)
     {
-        pts_storages[i] = paths[i].get_positions_at_times(times,stats[i],true);
+        pts_storages[i] = paths[i].get_positions_at_times(times,true);
     }
 
     // Print data

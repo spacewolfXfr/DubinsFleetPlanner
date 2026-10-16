@@ -100,7 +100,7 @@ double maxmin_dubins_traveltime(
 
                 this_ac_best_traveltime = std::min(
                     this_ac_best_traveltime,
-                    dd->get_duration(p));
+                    dd->get_duration());
             }
         }
         else
@@ -113,7 +113,7 @@ double maxmin_dubins_traveltime(
                 s, e,
                 wind_x, wind_y);
 
-            this_ac_best_traveltime = dd->get_duration(p);
+            this_ac_best_traveltime = dd->get_duration();
         }
 
         if (i == 0)
@@ -213,30 +213,25 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
     {
         std::vector<std::unique_ptr<Dubins>> &path_list = all_paths[i];
         std::vector<std::unique_ptr<Dubins>> filtered_paths;
-        AircraftStats stat = stats[i];
-
-        // filter_2D_geometric_colliding_paths: airspeed and target_airspeed should be equal for geometric filtering, or there should be no wind.
-        assert((std::abs(stat.airspeed - stat.target_airspeed) < DubinsFleetPlanner_ZERO_TOLERANCE) || (std::abs(wind_x) < DubinsFleetPlanner_ZERO_TOLERANCE && std::abs(wind_y) < DubinsFleetPlanner_ZERO_TOLERANCE));
-
+        
         for (std::unique_ptr<Dubins> &p_ptr : path_list)
         {
             bool conflict_free = true;
             double now = 0.;
+            double length_traveled = 0.;
 
             for (const DynamicPathShape &s : p_ptr->get_all_sections())
             {
-                double end = now + s.length / stat.airspeed;
-
                 // If there is wind, we need to compute the distance with the wind taken into account
                 if (wind_x * wind_x + wind_y * wind_y > DubinsFleetPlanner_ZERO_TOLERANCE)
                 {
-                    if (s.m == STRAIGHT)
+                    if (s.m == STRAIGHT && std::abs(p_ptr->get_acceleration()) < DubinsFleetPlanner_ZERO_TOLERANCE)
                     {
                         DynamicPathShape s_wind = s;
                         s_wind.x += wind_x * now;
                         s_wind.y += wind_y * now;
-                        s_wind.p1 += wind_x / (stat.airspeed / s.planar_speed());
-                        s_wind.p2 += wind_y / (stat.airspeed / s.planar_speed());
+                        s_wind.p1 += wind_x / (p_ptr->get_speed() / s.planar_speed());
+                        s_wind.p2 += wind_y / (p_ptr->get_speed() / s.planar_speed());
 
                         for (uint j = 0; j < obstacles.size(); j++)
                         {
@@ -256,22 +251,24 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
                         auto len_poses = s.get_sampled_poses(s.length / 10);
                         for (int k = 0; k < len_poses.size() - 1; k++)
                         {
-                            double t1 = std::get<0>(len_poses[k]) / stat.airspeed;
+                            double l1 = std::get<0>(len_poses[k]);
+                            double l2 = std::get<0>(len_poses[k + 1]);
+
+                            double t1 = p_ptr->get_time_at_length(l1);
+                            double t2 = p_ptr->get_time_at_length(l2);
+
                             Pose3D p1 = std::get<1>(len_poses[k]);
-                            double t2 = std::get<0>(len_poses[k + 1]) / stat.airspeed;
                             Pose3D p2 = std::get<1>(len_poses[k + 1]);
 
                             Pose3D p1_wind = p1;
-                            p1_wind.x += wind_x * (t1 + now);
-                            p1_wind.y += wind_y * (t1 + now);
+                            p1_wind.x += wind_x * t1;
+                            p1_wind.y += wind_y * t1;
                             Pose3D p2_wind = p2;
-                            p2_wind.x += wind_x * (t2 + now);
-                            p2_wind.y += wind_y * (t2 + now);
+                            p2_wind.x += wind_x * t2;
+                            p2_wind.y += wind_y * t2;
 
-                            DynamicPathShape segment(STRAIGHT, p1_wind, p2_wind, stat.airspeed, stat.turn_radius, 0.);
-                            // DynamicPathShape segment_nowind(STRAIGHT, p1, p2, stat.airspeed, stat.turn_radius, 0.);
-
-                            // if (stat.id == 60) path_as_obstacles.push_back(segment_nowind);
+                            // Geometric separation: speed is irrelevant
+                            DynamicPathShape segment(STRAIGHT, p1_wind, p2_wind, 1., 1., 0.);
 
                             for (uint j = 0; j < obstacles.size(); j++)
                             {
@@ -304,7 +301,8 @@ void filter_2D_geometric_colliding_paths(ListOfPossibilities &all_paths, const s
                         }
                     }
                 }
-                now = end;
+                length_traveled += s.length;
+                now = p_ptr->get_time_at_length(length_traveled);
                 if (!conflict_free)
                 {
                     break;

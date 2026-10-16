@@ -57,24 +57,24 @@ int main()
 
     std::cout << "Random shapes generation done" << std::endl;
 
-    AircraftStats s_stats   {0, path_planar_speed(s)   , path_planar_speed(s)   , 1., 0., 0., 0.};
-    AircraftStats l_stats   {1, path_planar_speed(l)   , path_planar_speed(l)   , 1., 0., 0., 0.};
-    AircraftStats r_stats   {2, path_planar_speed(r)   , path_planar_speed(r)   , 1., 0., 0., 0.};
+    SpeedProfile s_prof   {path_planar_speed(s)   , 0.};
+    SpeedProfile l_prof   {path_planar_speed(l)   , 0.};
+    SpeedProfile r_prof   {path_planar_speed(r)   , 0.};
 
 
     // -------------------- Compute groundtruth by sampling -------------------- //
 
-    std::pair<double,double> sampled_sl = sample_temporal_XY_dist<STRAIGHT,LEFT,samples>  (s,l,s_stats,l_stats,TEST_PATH_DURATION);
+    std::pair<double,double> sampled_sl = sample_temporal_XY_dist<STRAIGHT,LEFT,samples>  (s,l,s_prof,l_prof,TEST_PATH_DURATION);
     std::cout << "Sampling SL done" << std::endl;
     Pose3D sampled_sl_pose1 = follow_dubins(s,sampled_sl.first);
     Pose3D sampled_sl_pose2 = follow_dubins(l,sampled_sl.first);
 
-    std::pair<double,double> sampled_sr = sample_temporal_XY_dist<STRAIGHT,RIGHT,samples> (s,r,s_stats,r_stats,TEST_PATH_DURATION);
+    std::pair<double,double> sampled_sr = sample_temporal_XY_dist<STRAIGHT,RIGHT,samples> (s,r,s_prof,r_prof,TEST_PATH_DURATION);
     std::cout << "Sampling SR done" << std::endl;
     Pose3D sampled_sr_pose1 = follow_dubins(s,sampled_sr.first);
     Pose3D sampled_sr_pose2 = follow_dubins(r,sampled_sr.first);
 
-    std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,l_stats,r_stats,TEST_PATH_DURATION);
+    std::pair<double,double> sampled_lr = sample_temporal_XY_dist<LEFT,RIGHT,samples>     (l,r,l_prof,r_prof,TEST_PATH_DURATION);
     std::cout << "Sampling LR done" << std::endl;
     Pose3D sampled_lr_pose1 = follow_dubins(l,sampled_lr.first);
     Pose3D sampled_lr_pose2 = follow_dubins(r,sampled_lr.first);
@@ -82,15 +82,15 @@ int main()
 
     // -------------------- Test solver -------------------- //
 
-    std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,s_stats,l_stats,TEST_PATH_DURATION,TEST_PRECISION);
+    std::pair<double,double> test_sl_no_der = temporal_XY_dist<STRAIGHT,LEFT,false>  (s,l,s_prof,l_prof,TEST_PATH_DURATION,TEST_PRECISION);
     Pose3D test_sl_no_der_pose1 = follow_dubins(s,test_sl_no_der.first);
     Pose3D test_sl_no_der_pose2 = follow_dubins(l,test_sl_no_der.first);
 
-    std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,s_stats,r_stats,TEST_PATH_DURATION,TEST_PRECISION);
+    std::pair<double,double> test_sr_no_der = temporal_XY_dist<STRAIGHT,RIGHT,false> (s,r,s_prof,r_prof,TEST_PATH_DURATION,TEST_PRECISION);
     Pose3D test_sr_no_der_pose1 = follow_dubins(s,test_sr_no_der.first);
     Pose3D test_sr_no_der_pose2 = follow_dubins(r,test_sr_no_der.first);
 
-    std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,l_stats,r_stats,TEST_PATH_DURATION,TEST_PRECISION);
+    std::pair<double,double> test_lr_no_der = temporal_XY_dist<LEFT,RIGHT,false>     (l,r,l_prof,r_prof,TEST_PATH_DURATION,TEST_PRECISION);
     Pose3D test_lr_no_der_pose1 = follow_dubins(l,test_lr_no_der.first);
     Pose3D test_lr_no_der_pose2 = follow_dubins(r,test_lr_no_der.first);
 

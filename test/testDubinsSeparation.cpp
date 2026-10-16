@@ -20,20 +20,19 @@
 
 template<size_t samples>
 void sample_test_dubins_separation(const Dubins& d1, const Dubins& d2, 
-    const AircraftStats& v1, const AircraftStats& v2, 
     double duration, double separation, double tol,
     uint rec,
     std::string expect_msg = "",
     bool no_test=false)
 {
-    bool test_separation    = d1.is_XY_separated_from(d2,v1,v2,duration,separation,tol,std::nullopt,rec);
-    std::pair<double,double> computed = d1.XY_distance_to(d2,v1,v2,duration,separation,tol,std::nullopt,rec);
+    bool test_separation    = d1.is_XY_separated_from(d2,duration,separation,tol,std::nullopt,rec);
+    std::pair<double,double> computed = d1.XY_distance_to(d2,duration,separation,tol,std::nullopt,rec);
 
     EXPECT_EQ(test_separation, computed.second > separation) << expect_msg << " Sep and dist methods disagree";
 
     if (!no_test)
     {
-        std::pair<double,double> sampled = sample_temporal_XY_dist<samples>(d1,d2,v1,v2,duration);
+        std::pair<double,double> sampled = Dubins::sampling_XY_distance(d1,d2,duration,separation,tol);
         bool check_separation   = sampled.second > separation;
 
         ASSERT_TRUE((test_separation == check_separation) || (!test_separation && check_separation)) << expect_msg;
@@ -41,14 +40,14 @@ void sample_test_dubins_separation(const Dubins& d1, const Dubins& d2,
             << "Sampled : " << sampled.second << " at " << sampled.first << std::endl
             << "Computed: " << computed.second << " at " << computed.first << std::endl;
 
-        d1.is_XY_separated_from(d2,v1,v2,duration,separation,tol,std::nullopt,rec);
+        // d1.is_XY_separated_from(d2,duration,separation,tol,std::nullopt,rec);
     }
 }
 
 template<size_t samples>
 void check_all_dubins_pairs(
-    const std::vector<std::unique_ptr<Dubins>>& ds1, const AircraftStats& p1_stats,
-    const std::vector<std::unique_ptr<Dubins>>& ds2, const AircraftStats& p2_stats,
+    const std::vector<std::unique_ptr<Dubins>>& ds1,
+    const std::vector<std::unique_ptr<Dubins>>& ds2,
     double min_sep, double tol,
     uint rec,
     std::string expect_msg = "",
@@ -61,8 +60,8 @@ void check_all_dubins_pairs(
         {
             auto& d2 = ds2[i2];
             std::string msg = expect_msg + " using 1: " + d1->get_type_abbr() + " and 2: " + d2->get_type_abbr();
-            double duration = std::min(d1->get_duration(p1_stats),d2->get_duration(p2_stats));
-            sample_test_dubins_separation<TEST_SAMPLES_COUNT>(*d1,*d2,p1_stats,p2_stats,duration,min_sep,tol,rec,msg,no_test);
+            double duration = std::min(d1->get_duration(),d2->get_duration());
+            sample_test_dubins_separation<TEST_SAMPLES_COUNT>(*d1,*d2,duration,min_sep,tol,rec,msg,no_test);
         }
     }
 }
@@ -93,7 +92,7 @@ bool fit_and_test_dubins(
         return false;
     }
 
-    check_all_dubins_pairs<samples>(p1_possibilities,p1_stats,p2_possibilities,p2_stats,min_sep,tol,rec,expect_msg,no_test);
+    check_all_dubins_pairs<samples>(p1_possibilities,p2_possibilities,min_sep,tol,rec,expect_msg,no_test);
 
     return true;
 
@@ -170,8 +169,8 @@ static void generate_and_test_dubins_sep(AircraftStats a1, AircraftStats a2, dou
     else
     {
         check_all_dubins_pairs<TEST_SAMPLES_COUNT>(
-            p1_possibilities,a1,
-            p2_possibilities,a2,
+            p1_possibilities,
+            p2_possibilities,
             min_sep,DubinsFleetPlanner_PRECISION,
             rec,
             "Failure at case n° " + std::to_string(seed),

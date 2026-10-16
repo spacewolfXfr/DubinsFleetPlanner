@@ -49,7 +49,7 @@ std::vector<std::unique_ptr<Dubins>> generate_extended_paths(
 
                 extended_shapes.push_back(shape_end);
 
-                output.push_back(std::make_unique<Dubins>(start,end,extended_shapes));
+                output.push_back(std::make_unique<Dubins>(start,end,extended_shapes,stats));
             }        
         }
     }
@@ -108,7 +108,7 @@ std::vector<std::unique_ptr<Dubins>> generate_extended_fitted_paths(
 
                 extended_shapes.push_back(shape_end);
 
-                output.push_back(std::make_unique<Dubins>(start,end,extended_shapes));
+                output.push_back(std::make_unique<Dubins>(start,end,extended_shapes,stats));
             }        
         }
     }

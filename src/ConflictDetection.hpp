@@ -177,8 +177,8 @@ std::pair<double,double> temporal_3D_dist(const PathShape<m1> &s1, const PathSha
  * @tparam use_derivatives Set if the solver should use the derivatives for computations of not (may improve speed)
  * @param s1 First trajectory parameters
  * @param s2 Second trajectory parameters
- * @param s1_stats Motion statistics for the first trajectory
- * @param s2_stats Motion statistics for the second trajectory
+ * @param s1_prof Motion speed profile for the first trajectory
+ * @param s2_prof Motion speed profile for the second trajectory
  * @param duration Duration (in s) of the trajectories
  * @param tol Solver tolerance when looking for the minimum distance
  * @return std::pair<double,double> Location and value of the minimal 2D euclidean distance in the given duration
@@ -196,8 +196,8 @@ std::pair<double,double> temporal_XY_dist(const PathShape<m1> &s1, const PathSha
  * @tparam use_derivatives Set if the solver should use the derivatives for computations of not (may improve speed)
  * @param s1 First trajectory
  * @param s2 Second trajectory
- * @param s1_stats Motion statistics for the first trajectory
- * @param s2_stats Motion statistics for the second trajectory
+ * @param s1_prof Motion speed profile for the first trajectory
+ * @param s2_prof Motion speed profile for the second trajectory
  * @param duration Duration (in s) of the trajectories
  * @param tol Solver tolerance when looking for the minimum distance
  * @return std::pair<double,double> Location and value of the minimal 2D euclidean distance in the given duration

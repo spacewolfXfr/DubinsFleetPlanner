@@ -13,7 +13,8 @@ static std::optional<Ellipse> generate_ellipse_from_poses(const Pose3D &f, const
 
 
 static void join_and_add_paths(std::vector<std::unique_ptr<Dubins>> &store,
-                               std::vector<std::unique_ptr<Dubins>> &s1, std::vector<std::unique_ptr<Dubins>> &s2, double join_precision)
+                               std::vector<std::unique_ptr<Dubins>> &s1, std::vector<std::unique_ptr<Dubins>> &s2, double join_precision,
+                               const AircraftStats& stats)
 {
     for (const auto &p1 : s1)
     {
@@ -22,6 +23,7 @@ static void join_and_add_paths(std::vector<std::unique_ptr<Dubins>> &store,
             auto joined = join_paths(*p1, *p2, join_precision);
             if (joined.is_valid())
             {
+                joined.speed_profile = SpeedProfile::from_length(stats.airspeed, stats.target_airspeed, joined.get_length());
                 store.push_back(std::make_unique<Dubins>(joined));
             }
         }
@@ -67,12 +69,12 @@ std::vector<std::unique_ptr<Dubins>> EllipseSampling::generate_paths(
             p1 = underlying->generate_paths(start, midpoint, stats);
             p2 = underlying->generate_paths(midpoint, end, stats);
 
-            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
+            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION, stats);
 
             p1_bis = underlying->generate_paths(start, midpoint_bis, stats);
             p2_bis = underlying->generate_paths(midpoint_bis, end, stats);
 
-            join_and_add_paths(output, p1_bis, p2_bis, DubinsFleetPlanner_PRECISION);
+            join_and_add_paths(output, p1_bis, p2_bis, DubinsFleetPlanner_PRECISION, stats);
         }
     }
 
@@ -119,7 +121,7 @@ std::vector<std::unique_ptr<Dubins>> RandomEllipseSampling::generate_paths(
             p1 = underlying->generate_paths(start, midpoint, stats);
             p2 = underlying->generate_paths(midpoint, end, stats);
 
-            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
+            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION, stats);
         }
     }
 
@@ -185,12 +187,12 @@ std::vector<std::unique_ptr<Dubins>> FittedEllipseSampling::generate_paths(
             p1 = underlying->generate_paths(start, midpoint, stats, r1 * target_len);
             p2 = underlying->generate_paths(midpoint, end, stats, r2 * target_len);
 
-            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
+            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION, stats);
 
             p1_bis = underlying->generate_paths(start, midpoint_bis, stats, r1 * target_len);
             p2_bis = underlying->generate_paths(midpoint_bis, end, stats, r2 * target_len);
 
-            join_and_add_paths(output, p1_bis, p2_bis, DubinsFleetPlanner_PRECISION);
+            join_and_add_paths(output, p1_bis, p2_bis, DubinsFleetPlanner_PRECISION, stats);
         }
     }
     return output;
@@ -237,7 +239,7 @@ std::vector<std::unique_ptr<Dubins>> FittedRandomEllipseSampling::generate_paths
             p1 = underlying->generate_paths(start, midpoint, stats, r1 * target_len);
             p2 = underlying->generate_paths(midpoint, end, stats, r2 * target_len);
 
-            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION);
+            join_and_add_paths(output, p1, p2, DubinsFleetPlanner_PRECISION, stats);
         }
     }
     return output;

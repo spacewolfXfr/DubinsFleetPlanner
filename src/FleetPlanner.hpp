@@ -151,16 +151,16 @@ void filter_colliding_paths(ListOfPossibilities& all_paths, const std::vector<Ai
 
                 if (delay > DubinsFleetPlanner_PRECISION)
                 {
-                    if (delay > p.get_duration(s))
+                    if (delay > p.get_duration())
                     {
                         continue;
                     }
-                    const Dubins& p_followed = p.follow_for_duration(delay, s);
-                    res = generic_compute_distance<distance_function>(p_followed,c,s,cs,min_sep);
+                    const Dubins& p_followed = p.follow_for_duration(delay);
+                    res = generic_compute_distance<distance_function>(p_followed,c,min_sep);
                 }
                 else
                 {
-                    res = generic_compute_distance<distance_function>(p,c,s,cs,min_sep);
+                    res = generic_compute_distance<distance_function>(p,c,min_sep);
                 }
 
                 if (res.second < min_sep)
@@ -420,10 +420,10 @@ protected:
                     if (case_it == conflicts_memo.end()) // If not found, compute and store
                     {
                         double duration = std::min(
-                            dubin->get_duration(stats[current_index]),
-                            other->get_duration(stats[past_index]));
+                            dubin->get_duration(),
+                            other->get_duration());
 
-                        conflict_with_existing = !separation_function(*dubin,*other,stats[current_index],stats[past_index],duration,min_sep,precision_tol,DubinsDistDefaultRec);
+                        conflict_with_existing = !separation_function(*dubin,*other,duration,min_sep,precision_tol,DubinsDistDefaultRec);
                         conflicts_memo.insert({ccase,conflict_with_existing});
                     }
                     else    // Otherwise, simply retrieve the value
@@ -622,7 +622,7 @@ protected:
                 if (el->is_valid())
                 {
                     assert(abs(el->get_length() - target_len) < DubinsFleetPlanner_PRECISION);
-                    assert(abs(el->get_duration(stats[i]) - target_time) < DubinsFleetPlanner_PRECISION);
+                    assert(abs(el->get_duration() - target_time) < DubinsFleetPlanner_PRECISION);
                 }
             }
         }
@@ -1320,7 +1320,7 @@ public:
             for(const auto& d : sol)
             {
                 const auto& s = stats[i];
-                max_duration = std::max(max_duration,d.get_duration(s));
+                max_duration = std::max(max_duration,d.get_duration());
                 i++;
             }
             extra.final_path_time = max_duration;
